@@ -24,6 +24,9 @@
     "url": "https://github.com/ViBiOh/postman-2-gatling/issues"
   },
   "homepage": "https://github.com/ViBiOh/postman-2-gatling",
+  "dependencies": {
+    "colors": "latest"
+  },
   "devDependencies": {
     "babel-preset-es2015": "latest",
     "babel-eslint": "latest",
