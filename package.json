@@ -1,0 +1,34 @@
+{
+  "name": "postman-2-gatling",
+  "version": "0.0.1",
+  "description": "Postman To Gatling",
+  "main": "index.js",
+  "scripts": {
+    "jshint": "./node_modules/.bin/jshint src/",
+    "eslint": "./node_modules/.bin/eslint src/",
+    "jscs": "./node_modules/.bin/jscs src/",
+    "pretest": "npm run jshint && npm run eslint && npm run jscs",
+    "build": "npm run test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/ViBiOh/postman-2-gatling.git"
+  },
+  "keywords": [
+    "js",
+    "utils"
+  ],
+  "author": "Vincent Boutour <vincent.boutour@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ViBiOh/postman-2-gatling/issues"
+  },
+  "homepage": "https://github.com/ViBiOh/postman-2-gatling",
+  "devDependencies": {
+    "babel-preset-es2015": "latest",
+    "babel-eslint": "latest",
+    "jshint": "latest",
+    "eslint": "latest",
+    "jscs": "latest"
+  }
+}
