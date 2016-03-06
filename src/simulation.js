@@ -1,117 +1,112 @@
-class Simulation {
-    constructor() {
-        this.name = undefined;
-        this.outputName = undefined;
+'use strict';
 
-        this.collection = {
-            postman: undefined,
-            requests: [],
-            reqStr: ''
-        };
-        this.environment = {
-            postman: {
-                values: []
-            },
-            feeder: {}
-        };
+const fs = require('fs');
+const Request = require('./request.js');
+
+module.exports = class Simulation {
+  constructor() {
+    this.environments = [];
+    this.requests = [];
+    this.feeder = {};
+  }
+
+  loadEnvironnement(environmentFile) {
+    if (environmentFile) {
+      return new Promise((resolve, reject) => {
+        fs.readFile(environmentFile, 'utf8', (err, data) => {
+          if (err) {
+            reject(err);
+          }
+          this.environments = JSON.parse(data).values;
+          resolve();
+        });
+      });
     }
-}
 
-Simulation.prototype.loadEnvironnement = function (environmentFile) {
-    var self = this;
+    return Promise.resolve();
+  }
 
-    if (environmentFile !== undefined) {
-        self.environment.postman = JSON.parse(fs.readFileSync(environmentFile, 'utf8'));
-    }
-};
-
-Simulation.prototype.loadCollection = function (collectionFile, args) {
-    var self = this;
-
-    self.collection.postman = JSON.parse(fs.readFileSync(collectionFile, 'utf8'));
-    self.name = self.collection.postman.name;
-    self.outputName = args.output ? args.output : self.name;
-};
-
-Simulation.prototype.buildFeeder = function () {
-    var self = this;
-
-    for (var i = 0, size = self.environment.postman.values.length; i < size; i += 1) {
-        if (self.environment.postman.values[i].enabled) {
-            self.environment.feeder[self.environment.postman.values[i].key] = varString(self.environment.postman.values[i].value);
+  loadCollection(collectionFile) {
+    return new Promise((resolve, reject) => {
+      fs.readFile(collectionFile, 'utf8', (err, data) => {
+        if (err) {
+          reject(err);
         }
+        this.collections = JSON.parse(data);
+        this.name = this.collections.name;
+        resolve(this.collections);
+      });
+    });
+  }
+
+  buildFeeder() {
+    var self = this;
+
+    for (let index = this.environments.length - 1; index >= 0; index -= 1) {
+      if (this.environments[index].enabled) {
+        this.feeder[this.environments[index].key] = this.environments[index].value.replace(/\{\{(.*?)\}\}/gmi, '${$1}');
+      }
     }
 
-    var updated = true;
-
+    let updated = true;
     function varReplace(matchAll, varKey) {
-        updated = true;
-        return self.environment.feeder[varKey];
+      updated = true;
+      return self.feeder[varKey];
     }
 
     while (updated) {
-        updated = false;
+      updated = false;
 
-        for (var key in self.environment.feeder) {
-            if ({}.hasOwnProperty.call(self.environment.feeder, key)) {
-                self.environment.feeder[key] = self.environment.feeder[key].replace(/\$\{(.*?)\}/gmi, varReplace);
-            }
+      for (let key in this.feeder) {
+        if ({}.hasOwnProperty.call(this.feeder, key)) {
+          this.feeder[key] = this.feeder[key].replace(/\$\{(.*?)\}/gmi, varReplace);
         }
+      }
     }
-};
+  }
 
-Simulation.prototype.buildRequests = function () {
-    var self = this;
-
-    var folders = self.collection.postman.folders.sort(function (a, b) {
-        if (a.name < b.name) {
-            return -1;
-        } else if (a.name === b.name) {
-            return 0;
-        }
-        return 1;
+  buildRequests() {
+    const folders = this.collections.folders.sort((a, b) => {
+      if (a.name < b.name) {
+        return -1;
+      } else if (a.name === b.name) {
+        return 0;
+      }
+      return 1;
     });
 
-    for (var i = 0, size = folders.length; i < size; i += 1) {
-        self.buildCollection(folders[i]);
+    for (let index = 0, size = folders.length; index < size; index += 1) {
+      this.buildCollection(folders[index]);
+    }
+    this.buildCollection(this.collections);
+  }
+
+  buildCollection(collection) {
+    for (let index = 0, size = collection.order.length; index < size; index += 1) {
+      this.requests.push(new Request(this.getRawRequest(collection.order[index])).build());
+    }
+  }
+
+  getRawRequest(id) {
+    for (let index = 0, size = this.collections.requests.length; index < size; index += 1) {
+      if (this.collections.requests[index].id === id) {
+        return this.collections.requests[index];
+      }
+    }
+    return;
+  }
+
+  generate(bodiesPath) {
+    if (!fs.existsSync(bodiesPath + this.name)) {
+      fs.mkdirSync(bodiesPath + this.name);
     }
 
-    self.buildCollection(self.collection.postman);
-};
+    let str = '';
 
-Simulation.prototype.buildCollection = function (collection) {
-    var self = this;
-
-    for (var i = 0, size = collection.order.length; i < size; i += 1) {
-        var request = new Request(self.getRawRequest(collection.order[i])).build();
-        self.collection.requests.push(request);
-    }
-};
-
-Simulation.prototype.getRawRequest = function (id) {
-    var self = this;
-
-    for (var i = 0, size = self.collection.postman.requests.length; i < size; i += 1) {
-        if (self.collection.postman.requests[i].id === id) {
-            return self.collection.postman.requests[i];
-        }
-    }
-};
-
-Simulation.prototype.toScala = function () {
-    var self = this;
-
-    if (!fs.existsSync(GATLING_BODIES + self.outputName)) {
-        fs.mkdirSync(GATLING_BODIES + self.outputName);
-    }
-
-    var str = '';
-
-    for (var i = 0, size = self.collection.requests.length; i < size; i += 1) {
-        str += self.collection.requests[i].toScala(self.outputName, 2);
+    for (let index = 0, size = this.requests.length; index < size; index += 1) {
+      str += this.requests[index].generate(this.name, 2, bodiesPath);
     }
 
     return str;
+  }
 };
-
-module.exports = Simulation;
