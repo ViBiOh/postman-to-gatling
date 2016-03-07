@@ -5,7 +5,6 @@
 const fs = require('fs');
 const readFile = require('js-utils').asyncifyCallback(fs.readFile);
 const logger = require('node-logger').getLogger('postmanToGatling');
-const stringify = require('js-utils').stringify;
 const Simulation = require('./simulation.js');
 const messages = require('./messages.js');
 
@@ -62,20 +61,12 @@ function fillTemplate(simulation) {
   logger.info(`Generating Gatling scenario for ${simulation.name}`);
 
   return readFile(options.template, 'utf8').then(template => {
-    simulation.generate(options.home + options.bodies).then(data => {
-      const cleanTemplate = template.replace(/\{\{(outputName)\}\}/gmi, simulation.outputName)
-                                    .replace(/\{\{(requests)\}\}/mi, data);
+    simulation.generate(options).then(data => {
+      const cleanTemplate = template.replace(/\{\{(outputName)\}\}/gmi, simulation.outputName).replace(/\{\{(requests)\}\}/mi, data);
 
       fs.writeFile(`${options.home}${options.simulation}${simulation.name}.scala`, cleanTemplate);
     });
   });
-}
-
-function writeData(simulation) {
-  logger.info('Generating Gatling environment file for ${simulation.name}');
-
-  fs.writeFile(`${options.home}${options.data}${simulation.name}.json`,
-                stringify(simulation.feeder, ' '));
 }
 
 function displayWarn() {
@@ -92,9 +83,11 @@ Promise.all([
   simulation.buildFeeder();
   simulation.buildRequests();
 
-  fillTemplate(simulation);
-  writeData(simulation);
-  displayWarn();
+  Promise.all([
+    fillTemplate(simulation),
+  ]).then(() => {
+    displayWarn();
+  });
 }).catch(err => {
   logger.fatal(err);
 });

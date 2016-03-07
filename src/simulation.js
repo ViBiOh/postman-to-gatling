@@ -2,6 +2,9 @@
 
 const fs = require('fs');
 const readFile = require('js-utils').asyncifyCallback(fs.readFile);
+const writeFile = require('js-utils').asyncifyCallback(fs.writeFile);
+const stringify = require('js-utils').stringify;
+const logger = require('node-logger').getLogger('postmanToGatling');
 const Request = require('./request.js');
 
 module.exports = class Simulation {
@@ -85,24 +88,41 @@ module.exports = class Simulation {
     return undefined;
   }
 
-  generate(bodiesPath) {
-    const promise = new Promise(resolve => {
-      fs.exists(bodiesPath + this.name, exists => {
-        if (!exists) {
-          fs.mkdir(bodiesPath + this.name, resolve);
-        }
-        resolve();
-      });
-    });
+  generateEnvironments(options) {
+    if (this.environments.length > 0) {
+      logger.info(`Generating Gatling environment file for ${this.name}`);
+      return writeFile(`${options.home}${options.data}${this.name}.json`, stringify(this.feeder, ' '));
+    }
+    return Promise.resolve();
+  }
 
+  generateTemplate(options) {
     return new Promise(resolve => {
-      promise.then(() => {
-        let str = '';
-        for (let index = 0, size = this.requests.length; index < size; index += 1) {
-          str += this.requests[index].generate(this.name, 2, bodiesPath);
-        }
+      const promises = [];
+      let str = '';
+
+      function code(codeStr) {
+        str += codeStr;
+      }
+
+      for (let i = 0, size = this.requests.length; i < size; i += 1) {
+        const requestPromise = this.requests[i].generate(this.name, 2, `${options.home}${options.bodies}`);
+        promises.push(requestPromise);
+        requestPromise.then(append => {
+          code(append);
+        });
+      }
+
+      Promise.all(promises).then(() => {
         resolve(str);
       });
     });
+  }
+
+  generate(options) {
+    return Promise.all([
+      this.generateEnvironments(options),
+      this.generateTemplate(options),
+    ]);
   }
 };

@@ -70,12 +70,11 @@ module.exports = class Request {
       };
 
       if (self.headers['Content-Disposition']) {
-        self.headers['Content-Disposition'].replace(/filename\*?=(?:.*?'')?["']?(.*)["']?/mi
-          , (matchAll, headerFilename) => {
-            if (headerFilename) {
-              self.body.filename = headerFilename;
-            }
-          });
+        self.headers['Content-Disposition'].replace(/filename\*?=(?:.*?'')?["']?(.*)["']?/mi, (matchAll, headerFilename) => {
+          if (headerFilename) {
+            self.body.filename = headerFilename;
+          }
+        });
       }
     }
   }
@@ -107,12 +106,11 @@ module.exports = class Request {
         jsonPath = path;
       } else {
         value.replace(/(.*?)\.(.*)/mi, (matchAll, sourceVariable, sourcePath) => {
-          postman.replace(new RegExp(`${sourceVariable}\\s*=\\s*JSON.parse\\((\\w*)\\)`, 'm')
-            , (subAll, jsonSource) => {
-              if (jsonSource === 'responseBody') {
-                jsonPath = sourcePath;
-              }
-            });
+          postman.replace(new RegExp(`${sourceVariable}\\s*=\\s*JSON.parse\\((\\w*)\\)`, 'm'), (subAll, jsonSource) => {
+            if (jsonSource === 'responseBody') {
+              jsonPath = sourcePath;
+            }
+          });
         });
       }
 
@@ -136,21 +134,19 @@ module.exports = class Request {
     });
 
     let statusCheckCount = 0;
-    self.postman.tests.replace(/tests\s*\[["'].*?["']]\s*=\s*(.*?)[;\n]/gm,
-      (matchAll, testCode) => {
-        testCode.replace(/responseCode\.code\s*={2,3}\s*(\d{2,3})(?:\s*\|\|\s*)?/gm,
-          (subAll, httpCode) => {
-            statusCheckCount += 1;
-            if (statusCheckCount === 1) {
-              self.checks.push({
-                type: 'status',
-                value: httpCode,
-              });
-            } else {
-              messages.push(`For request <${self.name}> : Multiple HTTP status check is not currently supported`);
-            }
+    self.postman.tests.replace(/tests\s*\[["'].*?["']]\s*=\s*(.*?)[;\n]/gm, (matchAll, testCode) => {
+      testCode.replace(/responseCode\.code\s*={2,3}\s*(\d{2,3})(?:\s*\|\|\s*)?/gm, (subAll, httpCode) => {
+        statusCheckCount += 1;
+        if (statusCheckCount === 1) {
+          self.checks.push({
+            type: 'status',
+            value: httpCode,
           });
+        } else {
+          messages.push(`For request <${self.name}> : Multiple HTTP status check is not currently supported`);
+        }
       });
+    });
   }
 
   build() {
@@ -166,60 +162,68 @@ module.exports = class Request {
   }
 
   generate(outputName, offset, bodiesPath) {
-    let str = '';
+    return new Promise(resolve => {
+      let str = '';
 
-    str += `${indent(offset)}.exec(http("${this.name}")\n`;
-    str += `${indent(offset + 1)}.${this.method}("${this.url}")\n`;
-    if (this.auth) {
-      if (this.auth.type === 'basic') {
-        str += `${indent(offset + 1)}.basicAuth("${this.auth.user}", "${this.auth.psw}")\n'`;
-      }
-    }
+      const promises = [];
 
-    for (const key in this.headers) {
-      if ({}.hasOwnProperty.call(this.headers, key)) {
-        str += `${indent(offset + 1)}.header("${key}", "${this.headers[key]}")\n`;
-      }
-    }
-
-    if (this.body) {
-      const filename = `${outputName}/${this.body.filename}`;
-      const absolutPath = bodiesPath + filename;
-
-      if (this.body.content) {
-        fs.writeFile(absolutPath, this.body.content);
-      }
-
-      str += `${indent(offset + 1)}'.body(RawFileBody("${filename}"))\n`;
-      exists(absolutPath).then(exists => {
-        if (!exists) {
-          messages.add(`For request <${this.name}> : Please provide file ${absolutPath}`);
+      str += `${indent(offset)}.exec(http("${this.name}")\n`;
+      str += `${indent(offset + 1)}.${this.method}("${this.url}")\n`;
+      if (this.auth) {
+        if (this.auth.type === 'basic') {
+          str += `${indent(offset + 1)}.basicAuth("${this.auth.user}", "${this.auth.psw}")\n'`;
         }
+      }
+
+      for (const key in this.headers) {
+        if ({}.hasOwnProperty.call(this.headers, key)) {
+          str += `${indent(offset + 1)}.header("${key}", "${this.headers[key]}")\n`;
+        }
+      }
+
+      if (this.body && false/* TODO */) {
+        const filename = `${outputName}/${this.body.filename}`;
+        const absolutPath = bodiesPath + filename;
+
+        if (this.body.content) {
+          promises.push(fs.writeFile(absolutPath, this.body.content));
+        }
+
+        str += `${indent(offset + 1)}'.body(RawFileBody("${filename}"))\n`;
+        const existsPromise = exists(absolutPath);
+        promises.push(existsPromise);
+        existsPromise.then(present => {
+          if (!present) {
+            messages.add(`For request <${this.name}> : Please provide file ${absolutPath}`);
+          }
+        });
+      }
+
+      if (this.checks.length > 0) {
+        str += `${indent(offset + 1)}'.check(\n`;
+
+        for (let size = this.checks.length, i = 0; i < size; i += 1) {
+          if (i !== 0) {
+            str += ',\n';
+          }
+
+          if (this.checks[i].type === 'string') {
+            str += `${indent(offset + 2)}status.transform(string => "${this.checks[i].value}").saveAs("${this.checks[i].name}")`;
+          } else if (this.checks[i].type === 'json') {
+            str += `${indent(offset + 2)}jsonPath("$.${this.checks[i].value}").saveAs("${this.checks[i].name}")`;
+          } else if (this.checks[i].type === 'status') {
+            str += `${indent(offset + 2)}status.is(${this.checks[i].value})`;
+          }
+        }
+
+        str += `\n${indent(offset + 1)})\n`;
+      }
+
+      str += `${indent(offset)})\n`;
+
+      return Promise.all(promises).then(() => {
+        resolve(str);
       });
-    }
-
-    if (this.checks.length > 0) {
-      str += `${indent(offset + 1)}'.check(\n`;
-
-      for (let size = this.checks.length, i = 0; i < size; i += 1) {
-        if (i !== 0) {
-          str += ',\n';
-        }
-
-        if (this.checks[i].type === 'string') {
-          str += `${indent(offset + 2)}status.transform(string => "${this.checks[i].value}").saveAs("${this.checks[i].name}")`;
-        } else if (this.checks[i].type === 'json') {
-          str += `${indent(offset + 2)}jsonPath("$.${this.checks[i].value}").saveAs("${this.checks[i].name}")`;
-        } else if (this.checks[i].type === 'status') {
-          str += `${indent(offset + 2)}status.is(${this.checks[i].value})`;
-        }
-      }
-
-      str += `\n${indent(offset + 1)})\n`;
-    }
-
-    str += `${indent(offset)})\n`;
-
-    return str;
+    });
   }
 };
