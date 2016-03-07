@@ -40,7 +40,7 @@ module.exports = class Simulation {
   }
 
   buildFeeder() {
-    var self = this;
+    const self = this;
 
     for (let index = this.environments.length - 1; index >= 0; index -= 1) {
       if (this.environments[index].enabled) {
@@ -66,14 +66,14 @@ module.exports = class Simulation {
   }
 
   buildRequests() {
-    const folders = this.collections.folders.sort((a, b) => {
-      if (a.name < b.name) {
+    const folders = this.collections.folders ? this.collections.folders.sort((objA, objB) => {
+      if (objA.name < objB.name) {
         return -1;
-      } else if (a.name === b.name) {
+      } else if (objA.name === objB.name) {
         return 0;
       }
       return 1;
-    });
+    }) : [];
 
     for (let index = 0, size = folders.length; index < size; index += 1) {
       this.buildCollection(folders[index]);
@@ -97,16 +97,23 @@ module.exports = class Simulation {
   }
 
   generate(bodiesPath) {
-    if (!fs.existsSync(bodiesPath + this.name)) {
-      fs.mkdirSync(bodiesPath + this.name);
-    }
+    const promise = new Promise(resolve => {
+      fs.exists(bodiesPath + this.name, exists => {
+        if (!exists) {
+          fs.mkdir(bodiesPath + this.name, resolve);
+        }
+        resolve();
+      });
+    });
 
-    let str = '';
-
-    for (let index = 0, size = this.requests.length; index < size; index += 1) {
-      str += this.requests[index].generate(this.name, 2, bodiesPath);
-    }
-
-    return str;
+    return new Promise(resolve => {
+      promise.then(() => {
+        let str = '';
+        for (let index = 0, size = this.requests.length; index < size; index += 1) {
+          str += this.requests[index].generate(this.name, 2, bodiesPath);
+        }
+        resolve(str);
+      });
+    });
   }
 };

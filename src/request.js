@@ -39,7 +39,7 @@ module.exports = class Request {
   }
 
   buildHeaders() {
-    var self = this;
+    const self = this;
 
     function manageHeader(matchAll, headerKey, headerValue) {
       if (!self.auth || self.auth && headerKey !== 'Authorization') {
@@ -47,7 +47,7 @@ module.exports = class Request {
       }
     }
 
-    var rawHeaders = self.postman.headers.split(/\n/gmi);
+    const rawHeaders = self.postman.headers.split(/\n/gmi);
     for (var i = 0, size = rawHeaders.length; i < size; i += 1) {
       if (rawHeaders[i] !== '') {
         rawHeaders[i].replace(/(.*?):\s?(.*)/gmi, manageHeader);
@@ -56,7 +56,7 @@ module.exports = class Request {
   }
 
   buildBody() {
-    var self = this;
+    const self = this;
 
     if (self.postman.dataMode === 'raw') {
       self.body = {
@@ -70,7 +70,7 @@ module.exports = class Request {
 
       if (self.headers['Content-Disposition']) {
         self.headers['Content-Disposition'].replace(/filename\*?=(?:.*?'')?["']?(.*)["']?/mi, function(matchAll, headerFilename) {
-          if (headerFilename !== undefined) {
+          if (headerFilename) {
             self.body.filename = headerFilename;
           }
         });
@@ -79,7 +79,7 @@ module.exports = class Request {
   }
 
   buildChecks() {
-    var self = this;
+    const self = this;
 
     function stringVar(name, value) {
       let checked = false;
@@ -87,7 +87,7 @@ module.exports = class Request {
       value.replace(/['"](.*?)['"]/gmi, function(matchAll, string) {
         self.checks.push({
           type: 'string',
-          name: name,
+          name,
           value: string
         });
 
@@ -116,7 +116,7 @@ module.exports = class Request {
       if (jsonPath !== '') {
         self.checks.push({
           type: 'json',
-          name: name,
+          name,
           value: jsonPath
         });
 
@@ -178,35 +178,36 @@ module.exports = class Request {
     }
 
     if (this.body) {
-      let filename = outputName + '/' + this.body.filename;
+      const filename = outputName + '/' + this.body.filename;
       const absolutPath = bodiesPath + filename;
 
       if (this.body.content) {
-        let bodyFile = fs.openSync(absolutPath, 'w');
-        fs.writeSync(bodyFile, this.body.content);
-        fs.closeSync(bodyFile);
+        fs.writeFile(absolutPath, this.body.content);
       }
 
       str += indent(offset + 1) + '.body(RawFileBody("' + filename + '"))\n';
-      if (!fs.existsSync(absolutPath)) {
-        messages.add('For request <' + this.name + '> : Please provide file ' + absolutPath);
-      }
+      fs.exists(absolutPath, exists => {
+        if (!exists) {
+          messages.add('For request <' + this.name + '> : Please provide file ' + absolutPath);
+        }
+      });
     }
 
     if (this.checks.length > 0) {
       str += indent(offset + 1) + '.check(\n';
 
-      for (let i = 0, checksSize = this.checks.length; i < checksSize; i += 1) {
-        if (i !== 0) {
+      for (let checksSize = this.checks.length, index = 0; index < checksSize; index += 1) {
+        if (index !== 0) {
           str += ',\n';
         }
 
-        if (this.checks[i].type === 'string') {
-          str += indent(offset + 2) + 'status.transform(string => "' + this.checks[i].value + '").saveAs("' + this.checks[i].name + '")';
-        } else if (this.checks[i].type === 'json') {
-          str += indent(offset + 2) + 'jsonPath("$.' + this.checks[i].value + '").saveAs("' + this.checks[i].name + '")';
-        } else if (this.checks[i].type === 'status') {
-          str += indent(offset + 2) + 'status.is(' + this.checks[i].value + ')';
+        if (this.checks[index].type === 'string') {
+          str += indent(offset + 2) + 'status.transform(string => "' + this.checks[index].value + '")' +
+                  '.saveAs("' + this.checks[index].name + '")';
+        } else if (this.checks[index].type === 'json') {
+          str += indent(offset + 2) + 'jsonPath("$.' + this.checks[index].value + '").saveAs("' + this.checks[index].name + '")';
+        } else if (this.checks[index].type === 'status') {
+          str += indent(offset + 2) + 'status.is(' + this.checks[index].value + ')';
         }
       }
 

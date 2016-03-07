@@ -64,21 +64,19 @@ function fillTemplate(simulation) {
       throw err;
     }
 
-    template = template.replace(/\{\{(outputName)\}\}/gmi, simulation.outputName);
-    template = template.replace(/\{\{(requests)\}\}/mi, simulation.generate(options.home + options.bodies));
+    simulation.generate(options.home + options.bodies).then(data => {
+      const cleanTemplate = template.replace(/\{\{(outputName)\}\}/gmi, simulation.outputName)
+                                    .replace(/\{\{(requests)\}\}/mi, data);
 
-    const simulationFile = fs.openSync(options.home + options.simulation + simulation.name + '.scala', 'w');
-    fs.writeSync(simulationFile, template);
-    fs.closeSync(simulationFile);
+      fs.writeFile(options.home + options.simulation + simulation.name + '.scala', cleanTemplate);
+    });
   });
 }
 
 function writeData(simulation) {
   logger.info('Generating Gatling environment file for ' + simulation.name);
 
-  var feederFile = fs.openSync(options.home + options.data + simulation.name + '.json', 'w');
-  fs.writeSync(feederFile, JSON.stringify([simulation.feeder], '', ' ') + '\n');
-  fs.closeSync(feederFile);
+  fs.writeFile(options.home + options.data + simulation.name + '.json', JSON.stringify([simulation.feeder], '', ' ') + '\n');
 }
 
 function displayWarn() {
