@@ -7,8 +7,8 @@ module.exports = {
     messages.push(message);
   },
   iterate: (fn) => {
-    for (var index = messages.length - 1; index >= 0; index -= 1) {
-      Reflect.apply(fn, messages[index], index);
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      Reflect.apply(fn, messages[i], i);
     }
-  }
+  },
 };

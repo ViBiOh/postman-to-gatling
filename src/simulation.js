@@ -57,7 +57,7 @@ module.exports = class Simulation {
     while (updated) {
       updated = false;
 
-      for (let key in this.feeder) {
+      for (const key in this.feeder) {
         if ({}.hasOwnProperty.call(this.feeder, key)) {
           this.feeder[key] = this.feeder[key].replace(/\$\{(.*?)\}/gmi, varReplace);
         }
@@ -66,10 +66,10 @@ module.exports = class Simulation {
   }
 
   buildRequests() {
-    const folders = this.collections.folders ? this.collections.folders.sort((objA, objB) => {
-      if (objA.name < objB.name) {
+    const folders = this.collections.folders ? this.collections.folders.sort((a, b) => {
+      if (a.name < b.name) {
         return -1;
-      } else if (objA.name === objB.name) {
+      } else if (a.name === b.name) {
         return 0;
       }
       return 1;
@@ -93,7 +93,7 @@ module.exports = class Simulation {
         return this.collections.requests[index];
       }
     }
-    return;
+    return undefined;
   }
 
   generate(bodiesPath) {

@@ -33,7 +33,7 @@ module.exports = class Request {
       this.auth = {
         type: 'basic',
         user: varString(this.postman.helperAttributes.username),
-        psw: varString(this.postman.helperAttributes.password)
+        psw: varString(this.postman.helperAttributes.password),
       };
     }
   }
@@ -48,7 +48,7 @@ module.exports = class Request {
     }
 
     const rawHeaders = self.postman.headers.split(/\n/gmi);
-    for (var i = 0, size = rawHeaders.length; i < size; i += 1) {
+    for (let i = 0, size = rawHeaders.length; i < size; i += 1) {
       if (rawHeaders[i] !== '') {
         rawHeaders[i].replace(/(.*?):\s?(.*)/gmi, manageHeader);
       }
@@ -60,20 +60,21 @@ module.exports = class Request {
 
     if (self.postman.dataMode === 'raw') {
       self.body = {
-        filename: self.name.replace(/[^a-zA-Z0-9-]/gm, '_') + '_stringbody.txt',
-        content: varString(self.postman.rawModeData)
+        filename: `${self.name.replace(/[^a-zA-Z0-9-]/gm, '_')}_stringbody.txt`,
+        content: varString(self.postman.rawModeData),
       };
     } else if (self.postman.dataMode === 'binary') {
       self.body = {
-        filename: 'YOUR_FILENAME_HERE'
+        filename: 'YOUR_FILENAME_HERE',
       };
 
       if (self.headers['Content-Disposition']) {
-        self.headers['Content-Disposition'].replace(/filename\*?=(?:.*?'')?["']?(.*)["']?/mi, function(matchAll, headerFilename) {
-          if (headerFilename) {
-            self.body.filename = headerFilename;
-          }
-        });
+        self.headers['Content-Disposition'].replace(/filename\*?=(?:.*?'')?["']?(.*)["']?/mi
+          , (matchAll, headerFilename) => {
+            if (headerFilename) {
+              self.body.filename = headerFilename;
+            }
+          });
       }
     }
   }
@@ -84,11 +85,11 @@ module.exports = class Request {
     function stringVar(name, value) {
       let checked = false;
 
-      value.replace(/['"](.*?)['"]/gmi, function(matchAll, string) {
+      value.replace(/['"](.*?)['"]/gmi, (matchAll, string) => {
         self.checks.push({
           type: 'string',
           name,
-          value: string
+          value: string,
         });
 
         checked = true;
@@ -104,12 +105,13 @@ module.exports = class Request {
       if (path) {
         jsonPath = path;
       } else {
-        value.replace(/(.*?)\.(.*)/mi, function(matchAll, sourceVariable, sourcePath) {
-          postman.replace(new RegExp(sourceVariable + '\\s*=\\s*JSON.parse\\((\\w*)\\)', 'm'), function(subAll, jsonSource) {
-            if (jsonSource === 'responseBody') {
-              jsonPath = sourcePath;
-            }
-          });
+        value.replace(/(.*?)\.(.*)/mi, (matchAll, sourceVariable, sourcePath) => {
+          postman.replace(new RegExp(`${sourceVariable}\\s*=\\s*JSON.parse\\((\\w*)\\)`, 'm')
+            , (subAll, jsonSource) => {
+              if (jsonSource === 'responseBody') {
+                jsonPath = sourcePath;
+              }
+            });
         });
       }
 
@@ -117,7 +119,7 @@ module.exports = class Request {
         self.checks.push({
           type: 'json',
           name,
-          value: jsonPath
+          value: jsonPath,
         });
 
         checked = true;
@@ -133,19 +135,21 @@ module.exports = class Request {
     });
 
     let statusCheckCount = 0;
-    self.postman.tests.replace(/tests\s*\[["'].*?["']]\s*=\s*(.*?)[;\n]/gm, function(matchAll, testCode) {
-      testCode.replace(/responseCode\.code\s*={2,3}\s*(\d{2,3})(?:\s*\|\|\s*)?/gm, function(subAll, httpCode) {
-        statusCheckCount += 1;
-        if (statusCheckCount === 1) {
-          self.checks.push({
-            type: 'status',
-            value: httpCode
+    self.postman.tests.replace(/tests\s*\[["'].*?["']]\s*=\s*(.*?)[;\n]/gm,
+      (matchAll, testCode) => {
+        testCode.replace(/responseCode\.code\s*={2,3}\s*(\d{2,3})(?:\s*\|\|\s*)?/gm,
+          (subAll, httpCode) => {
+            statusCheckCount += 1;
+            if (statusCheckCount === 1) {
+              self.checks.push({
+                type: 'status',
+                value: httpCode,
+              });
+            } else {
+              messages.push(`For request <${self.name}> : Multiple HTTP status check is not currently supported`);
+            }
           });
-        } else {
-          messages.push('For request <' + self.name + '> : Multiple HTTP status check is not currently supported');
-        }
       });
-    });
   }
 
   build() {
@@ -163,58 +167,57 @@ module.exports = class Request {
   generate(outputName, offset, bodiesPath) {
     let str = '';
 
-    str += indent(offset) + '.exec(http("' + this.name + '")\n';
-    str += indent(offset + 1) + '.' + this.method + '("' + this.url + '")\n';
+    str += `${indent(offset)}.exec(http("${this.name}")\n`;
+    str += `${indent(offset + 1)}.${this.method}("${this.url}")\n`;
     if (this.auth) {
       if (this.auth.type === 'basic') {
-        str += indent(offset + 1) + '.basicAuth("' + this.auth.user + '", "' + this.auth.psw + '")\n';
+        str += `${indent(offset + 1)}.basicAuth("${this.auth.user}", "${this.auth.psw}")\n'`;
       }
     }
 
-    for (let key in this.headers) {
+    for (const key in this.headers) {
       if ({}.hasOwnProperty.call(this.headers, key)) {
-        str += indent(offset + 1) + '.header("' + key + '", "' + this.headers[key] + '")\n';
+        str += `${indent(offset + 1)}.header("${key}", "${this.headers[key]}")\n`;
       }
     }
 
     if (this.body) {
-      const filename = outputName + '/' + this.body.filename;
+      const filename = `${outputName}/${this.body.filename}`;
       const absolutPath = bodiesPath + filename;
 
       if (this.body.content) {
         fs.writeFile(absolutPath, this.body.content);
       }
 
-      str += indent(offset + 1) + '.body(RawFileBody("' + filename + '"))\n';
+      str += `${indent(offset + 1)}'.body(RawFileBody("${filename}"))\n`;
       fs.exists(absolutPath, exists => {
         if (!exists) {
-          messages.add('For request <' + this.name + '> : Please provide file ' + absolutPath);
+          messages.add(`For request <${this.name}> : Please provide file ${absolutPath}`);
         }
       });
     }
 
     if (this.checks.length > 0) {
-      str += indent(offset + 1) + '.check(\n';
+      str += `${indent(offset + 1)}'.check(\n`;
 
-      for (let checksSize = this.checks.length, index = 0; index < checksSize; index += 1) {
-        if (index !== 0) {
+      for (let size = this.checks.length, i = 0; i < size; i += 1) {
+        if (i !== 0) {
           str += ',\n';
         }
 
-        if (this.checks[index].type === 'string') {
-          str += indent(offset + 2) + 'status.transform(string => "' + this.checks[index].value + '")' +
-                  '.saveAs("' + this.checks[index].name + '")';
-        } else if (this.checks[index].type === 'json') {
-          str += indent(offset + 2) + 'jsonPath("$.' + this.checks[index].value + '").saveAs("' + this.checks[index].name + '")';
-        } else if (this.checks[index].type === 'status') {
-          str += indent(offset + 2) + 'status.is(' + this.checks[index].value + ')';
+        if (this.checks[i].type === 'string') {
+          str += `${indent(offset + 2)}status.transform(string => "${this.checks[i].value}").saveAs("${this.checks[i].name}")`;
+        } else if (this.checks[i].type === 'json') {
+          str += `${indent(offset + 2)}jsonPath("$.${this.checks[i].value}").saveAs("${this.checks[i].name}")`;
+        } else if (this.checks[i].type === 'status') {
+          str += `${indent(offset + 2)}status.is(${this.checks[i].value})`;
         }
       }
 
-      str += '\n' + indent(offset + 1) + ')\n';
+      str += `\n${indent(offset + 1)})\n`;
     }
 
-    str += indent(offset) + ')\n';
+    str += `${indent(offset)})\n`;
 
     return str;
   }
