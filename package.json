@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "eslint": "./node_modules/.bin/eslint src/",
-    "jscs": "./node_modules/.bin/jscs src/",
-    "pretest": "npm run eslint && npm run jscs",
+    "pretest": "npm run eslint",
     "build": "npm run test"
   },
   "repository": {
@@ -33,7 +32,6 @@
     "babel-eslint": "latest",
     "babel-preset-es2015": "latest",
     "eslint": "latest",
-    "eslint-config-airbnb": "latest",
-    "jscs": "latest"
+    "eslint-config-airbnb": "latest"
   }
 }
