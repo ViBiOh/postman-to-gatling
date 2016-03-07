@@ -1,6 +1,7 @@
 'use strict';
 
 const fs = require('fs');
+const exists = require('js-utils').asyncifyCallback(fs.exists);
 const messages = require('./messages');
 
 function varString(value) {
@@ -190,7 +191,7 @@ module.exports = class Request {
       }
 
       str += `${indent(offset + 1)}'.body(RawFileBody("${filename}"))\n`;
-      fs.exists(absolutPath, exists => {
+      exists(absolutPath).then(exists => {
         if (!exists) {
           messages.add(`For request <${this.name}> : Please provide file ${absolutPath}`);
         }

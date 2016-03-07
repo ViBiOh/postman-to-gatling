@@ -3,6 +3,7 @@
 'use strict';
 
 const fs = require('fs');
+const readFile = require('js-utils').asyncifyCallback(fs.readFile);
 const logger = require('node-logger').getLogger('postmanToGatling');
 const stringify = require('js-utils').stringify;
 const Simulation = require('./simulation.js');
@@ -60,11 +61,7 @@ const options = require('yargs')
 function fillTemplate(simulation) {
   logger.info(`Generating Gatling scenario for ${simulation.name}`);
 
-  fs.readFile(options.template, 'utf8', (err, template) => {
-    if (err) {
-      throw err;
-    }
-
+  return readFile(options.template, 'utf8').then(template => {
     simulation.generate(options.home + options.bodies).then(data => {
       const cleanTemplate = template.replace(/\{\{(outputName)\}\}/gmi, simulation.outputName)
                                     .replace(/\{\{(requests)\}\}/mi, data);

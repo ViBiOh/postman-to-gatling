@@ -1,6 +1,7 @@
 'use strict';
 
 const fs = require('fs');
+const readFile = require('js-utils').asyncifyCallback(fs.readFile);
 const Request = require('./request.js');
 
 module.exports = class Simulation {
@@ -12,14 +13,8 @@ module.exports = class Simulation {
 
   loadEnvironnement(environmentFile) {
     if (environmentFile) {
-      return new Promise((resolve, reject) => {
-        fs.readFile(environmentFile, 'utf8', (err, data) => {
-          if (err) {
-            reject(err);
-          }
-          this.environments = JSON.parse(data).values;
-          resolve();
-        });
+      return readFile(environmentFile, 'utf8').then(data => {
+        this.environments = JSON.parse(data).values;
       });
     }
 
@@ -27,15 +22,9 @@ module.exports = class Simulation {
   }
 
   loadCollection(collectionFile) {
-    return new Promise((resolve, reject) => {
-      fs.readFile(collectionFile, 'utf8', (err, data) => {
-        if (err) {
-          reject(err);
-        }
-        this.collections = JSON.parse(data);
-        this.name = this.collections.name;
-        resolve(this.collections);
-      });
+    return readFile(collectionFile, 'utf8').then(data => {
+      this.collections = JSON.parse(data);
+      this.name = this.collections.name;
     });
   }
 
