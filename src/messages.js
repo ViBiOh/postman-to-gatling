@@ -6,9 +6,9 @@ module.exports = {
   add: (message) => {
     messages.push(message);
   },
-  iterate: (fn) => {
-    for (let i = messages.length - 1; i >= 0; i -= 1) {
-      Reflect.apply(fn, messages[i], i);
+  display: (logger) => {
+    for (let i = 0, size = messages.length; i < size; i += 1) {
+      logger.warn(messages[i]);
     }
   },
 };

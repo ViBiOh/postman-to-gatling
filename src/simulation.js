@@ -14,6 +14,13 @@ module.exports = class Simulation {
     this.feeder = {};
   }
 
+  load(environmentFile, collectionFile) {
+    return Promise.all([
+      this.loadEnvironnement(environmentFile),
+      this.loadCollection(collectionFile),
+    ]);
+  }
+
   loadEnvironnement(environmentFile) {
     if (environmentFile) {
       return readFile(environmentFile, 'utf8').then(data => {
@@ -31,14 +38,23 @@ module.exports = class Simulation {
     });
   }
 
-  buildFeeder() {
-    const self = this;
+  build() {
+    this.buildFeeder();
+    this.buildRequests();
+  }
 
-    for (let index = this.environments.length - 1; index >= 0; index -= 1) {
-      if (this.environments[index].enabled) {
-        this.feeder[this.environments[index].key] = this.environments[index].value.replace(/\{\{(.*?)\}\}/gmi, '${$1}');
+  buildFeeder() {
+    for (let i = this.environments.length - 1; i >= 0; i -= 1) {
+      if (this.environments[i].enabled) {
+        this.feeder[this.environments[i].key] = this.environments[i].value.replace(/\{\{(.*?)\}\}/gmi, '${$1}');
       }
     }
+
+    this.flatEnvironmentVariables();
+  }
+
+  flatEnvironmentVariables() {
+    const self = this;
 
     let updated = true;
     function varReplace(matchAll, varKey) {
@@ -50,7 +66,7 @@ module.exports = class Simulation {
       updated = false;
 
       for (const key in this.feeder) {
-        if ({}.hasOwnProperty.call(this.feeder, key)) {
+        if (Object.hasOwnProperty.call(this.feeder, key)) {
           this.feeder[key] = this.feeder[key].replace(/\$\{(.*?)\}/gmi, varReplace);
         }
       }
@@ -67,36 +83,36 @@ module.exports = class Simulation {
       return 1;
     }) : [];
 
-    for (let index = 0, size = folders.length; index < size; index += 1) {
-      this.buildCollection(folders[index]);
+    for (let i = 0, size = folders.length; i < size; i += 1) {
+      this.buildCollection(folders[i]);
     }
     this.buildCollection(this.collections);
   }
 
   buildCollection(collection) {
-    for (let index = 0, size = collection.order.length; index < size; index += 1) {
-      this.requests.push(new Request(this.getRawRequest(collection.order[index])).build());
+    for (let i = 0, size = collection.order.length; i < size; i += 1) {
+      this.requests.push(new Request(this.getRawRequest(collection.order[i])).build());
     }
   }
 
   getRawRequest(id) {
-    for (let index = 0, size = this.collections.requests.length; index < size; index += 1) {
-      if (this.collections.requests[index].id === id) {
-        return this.collections.requests[index];
+    for (let i = 0, size = this.collections.requests.length; i < size; i += 1) {
+      if (this.collections.requests[i].id === id) {
+        return this.collections.requests[i];
       }
     }
     return undefined;
   }
 
-  generateEnvironments(options) {
+  generateEnvironments(home, data) {
     if (this.environments.length > 0) {
       logger.info(`Generating Gatling environment file for ${this.name}`);
-      return writeFile(`${options.home}${options.data}${this.name}.json`, stringify(this.feeder, ' '));
+      return writeFile(`${home}${data}${this.name}.json`, stringify(this.feeder, ' '));
     }
     return Promise.resolve();
   }
 
-  generateTemplate(options) {
+  generateTemplate(home, bodies) {
     return new Promise(resolve => {
       const promises = [];
       let str = '';
@@ -106,7 +122,7 @@ module.exports = class Simulation {
       }
 
       for (let i = 0, size = this.requests.length; i < size; i += 1) {
-        const requestPromise = this.requests[i].generate(this.name, 2, `${options.home}${options.bodies}`);
+        const requestPromise = this.requests[i].generate(this.name, 2, `${home}${bodies}`);
         promises.push(requestPromise);
         requestPromise.then(append => {
           code(append);
@@ -119,10 +135,21 @@ module.exports = class Simulation {
     });
   }
 
-  generate(options) {
+  writeTemplate(home, simulation, templatePath, requestsTemplate) {
+    return new Promise(resolve => {
+      readFile(templatePath, 'utf8').then(templateData => {
+        const cleanTemplate = templateData.replace(/\{\{(outputName)\}\}/gmi, this.name).replace(/\{\{(requests)\}\}/mi, requestsTemplate);
+        fs.writeFile(`${home}${simulation}${this.name}.scala`, cleanTemplate, resolve);
+      });
+    });
+  }
+
+  generate(home, data, bodies, simulation, templatePath) {
     return Promise.all([
-      this.generateEnvironments(options),
-      this.generateTemplate(options),
-    ]);
+      this.generateEnvironments(home, data),
+      this.generateTemplate(home, bodies),
+    ]).then(values => {
+      this.writeTemplate(home, simulation, templatePath, values[1]);
+    });
   }
 };

@@ -2,8 +2,6 @@
 
 'use strict';
 
-const fs = require('fs');
-const readFile = require('js-utils').asyncifyCallback(fs.readFile);
 const logger = require('node-logger').getLogger('postmanToGatling');
 const Simulation = require('./simulation.js');
 const messages = require('./messages.js');
@@ -31,62 +29,42 @@ const options = require('yargs')
     alias: 'h',
     type: 'string',
     default: './gatling',
+    normalize: true,
     describe: 'path of gatling home dir. Affect body, data and simulations paths',
   }).options('bodies', {
     alias: 'b',
     type: 'string',
     default: '/user-files/bodies/',
+    normalize: true,
     describe: 'path where bodies will be written',
   }).options('data', {
     alias: 'd',
     type: 'string',
     default: '/user-files/data/',
+    normalize: true,
     describe: 'path where session\'s data will be written',
   }).options('simulation', {
     alias: 's',
     type: 'string',
     default: '/user-files/simulations/',
+    normalize: true,
     describe: 'path where scenario will be written',
   }).options('template', {
     alias: 't',
     type: 'string',
     default: './src/postman2gatling_template.scala',
+    normalize: true,
     describe: 'path to scala template file',
   })
   .help('help')
   .strict()
   .argv;
 
-function fillTemplate(simulation) {
-  logger.info(`Generating Gatling scenario for ${simulation.name}`);
-
-  return readFile(options.template, 'utf8').then(template => {
-    simulation.generate(options).then(data => {
-      const cleanTemplate = template.replace(/\{\{(outputName)\}\}/gmi, simulation.outputName).replace(/\{\{(requests)\}\}/mi, data);
-
-      fs.writeFile(`${options.home}${options.simulation}${simulation.name}.scala`, cleanTemplate);
-    });
-  });
-}
-
-function displayWarn() {
-  messages.iterate(message => {
-    logger.warn(`  ${message}`);
-  });
-}
-
 const simulation = new Simulation();
-Promise.all([
-  simulation.loadEnvironnement(options.environment),
-  simulation.loadCollection(options.collection),
-]).then(() => {
-  simulation.buildFeeder();
-  simulation.buildRequests();
-
-  Promise.all([
-    fillTemplate(simulation),
-  ]).then(() => {
-    displayWarn();
+simulation.load(options.environment, options.collection).then(() => {
+  simulation.build();
+  simulation.generate(options.home, options.data, options.bodies, options.simulation, options.template).then(() => {
+    messages.display(logger);
   });
 }).catch(err => {
   logger.fatal(err);
