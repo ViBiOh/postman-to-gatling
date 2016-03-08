@@ -4,22 +4,9 @@ const fs = require('fs');
 const writeFile = require('js-utils').asyncifyCallback(fs.writeFile);
 const access = require('js-utils').asyncifyCallback(fs.access);
 const messages = require('./messages');
-
-function varString(value) {
-  return value.replace(/\{\{(.*?)\}\}/gmi, '${$1}');
-}
-
-function indent(times) {
-  let str = '';
-
-  let index = 0;
-  while (index < times) {
-    str += '  ';
-    index += 1;
-  }
-
-  return str;
-}
+const promises = require('./promises');
+const placeholderReplacer = require('./commons').variablePlaceholderToShellVariable;
+const indent = require('./commons').indent;
 
 module.exports = class Request {
   constructor(postman) {
@@ -34,8 +21,8 @@ module.exports = class Request {
     if (this.postman.currentHelper === 'basicAuth') {
       this.auth = {
         type: 'basic',
-        user: varString(this.postman.helperAttributes.username),
-        psw: varString(this.postman.helperAttributes.password),
+        user: placeholderReplacer(this.postman.helperAttributes.username),
+        psw: placeholderReplacer(this.postman.helperAttributes.password),
       };
     }
   }
@@ -45,7 +32,7 @@ module.exports = class Request {
 
     function manageHeader(matchAll, headerKey, headerValue) {
       if (!self.auth || self.auth && headerKey !== 'Authorization') {
-        self.headers[varString(headerKey)] = varString(headerValue);
+        self.headers[placeholderReplacer(headerKey)] = placeholderReplacer(headerValue);
       }
     }
 
@@ -63,7 +50,7 @@ module.exports = class Request {
     if (self.postman.dataMode === 'raw') {
       self.body = {
         filename: `${self.name.replace(/[^a-zA-Z0-9-]/gm, '_')}_stringbody.txt`,
-        content: varString(self.postman.rawModeData),
+        content: placeholderReplacer(self.postman.rawModeData),
       };
     } else if (self.postman.dataMode === 'binary') {
       self.body = {
@@ -151,8 +138,8 @@ module.exports = class Request {
   }
 
   build() {
-    this.method = varString(this.postman.method.toLowerCase());
-    this.url = varString(this.postman.url);
+    this.method = placeholderReplacer(this.postman.method.toLowerCase());
+    this.url = placeholderReplacer(this.postman.url);
 
     this.buildAuth();
     this.buildHeaders();
@@ -165,8 +152,6 @@ module.exports = class Request {
   generate(outputName, offset, bodiesPath) {
     return new Promise(resolve => {
       let str = '';
-
-      const promises = [];
 
       str += `${indent(offset)}.exec(http("${this.name}")\n`;
       str += `${indent(offset + 1)}.${this.method}("${this.url}")\n`;
@@ -189,11 +174,11 @@ module.exports = class Request {
 
         if (this.body.content) {
           writePromise = writeFile(requestBodyPath, this.body.content);
-          promises.push(writePromise);
+          promises.add(writePromise);
         }
 
         str += `${indent(offset + 1)}'.body(RawFileBody("${filename}"))\n`;
-        promises.push(new Promise(resolveAccess => {
+        promises.add(new Promise(resolveAccess => {
           if (writePromise) {
             writePromise.then(() => {
               access(requestBodyPath, fs.W_OK).then(resolveAccess, () => {
@@ -228,10 +213,7 @@ module.exports = class Request {
       }
 
       str += `${indent(offset)})\n`;
-
-      return Promise.all(promises).then(() => {
-        resolve(str);
-      });
+      resolve(str);
     });
   }
 };

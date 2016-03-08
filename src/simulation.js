@@ -7,7 +7,9 @@ const access = require('js-utils').asyncifyCallback(fs.access);
 const mkdir = require('js-utils').asyncifyCallback(fs.mkdir);
 const stringify = require('js-utils').stringify;
 const logger = require('node-logger').getLogger('postmanToGatling');
-const Request = require('./request.js');
+const Request = require('./request');
+const promises = require('./promises');
+const placeholderReplacer = require('./commons').variablePlaceholderToShellVariable;
 
 module.exports = class Simulation {
   constructor() {
@@ -48,7 +50,7 @@ module.exports = class Simulation {
   buildFeeder() {
     for (let i = this.environments.length - 1; i >= 0; i -= 1) {
       if (this.environments[i].enabled) {
-        this.feeder[this.environments[i].key] = this.environments[i].value.replace(/\{\{(.*?)\}\}/gmi, '${$1}');
+        this.feeder[this.environments[i].key] = placeholderReplacer(this.environments[i].value);
       }
     }
 
@@ -120,14 +122,12 @@ module.exports = class Simulation {
   generateEnvironments(home, data) {
     if (this.environments.length > 0) {
       logger.info(`Generating Gatling environment file for ${this.name}`);
-      return writeFile(`${home}${data}${this.name}.json`, stringify(this.feeder, ' '));
+      promises.add(writeFile(`${home}${data}${this.name}.json`, stringify(this.feeder, ' ')));
     }
-    return Promise.resolve();
   }
 
   generateTemplate(home, bodies) {
     return new Promise(resolve => {
-      const promises = [];
       let str = '';
 
       function code(codeStr) {
@@ -136,39 +136,35 @@ module.exports = class Simulation {
 
       for (let i = 0, size = this.requests.length; i < size; i += 1) {
         const requestPromise = this.requests[i].generate(this.name, 2, `${home}${bodies}`);
-        promises.push(requestPromise);
+        promises.add(requestPromise);
         requestPromise.then(append => {
           code(append);
         });
       }
 
-      Promise.all(promises).then(() => {
-        resolve(str);
-      });
+      resolve(str);
     });
   }
 
   writeTemplate(home, simulation, templatePath, requestsTemplate) {
-    return new Promise(resolve => {
-      readFile(templatePath, 'utf8').then(templateData => {
-        const cleanTemplate = templateData.replace(/\{\{(outputName)\}\}/gmi, this.name).replace(/\{\{(requests)\}\}/mi, requestsTemplate);
-        fs.writeFile(`${home}${simulation}${this.name}.scala`, cleanTemplate, resolve);
-      });
+    readFile(templatePath, 'utf8').then(templateData => {
+      const cleanTemplate = templateData.replace(/\{\{(outputName)\}\}/gmi, this.name).replace(/\{\{(requests)\}\}/mi, requestsTemplate);
+      promises.add(fs.writeFile(`${home}${simulation}${this.name}.scala`, cleanTemplate, resolve));
     });
   }
 
   generate(home, data, bodies, simulation, templatePath) {
     return new Promise(resolve => {
       this.createBodyDirectory(home, bodies).then(() => {
-        Promise.all([
-          this.generateEnvironments(home, data),
-          this.generateTemplate(home, bodies),
-        ]).then(values => {
-          this.writeTemplate(home, simulation, templatePath, values[1]).then(resolve);
+        this.generateEnvironments(home, data);
+        this.generateTemplate(home, bodies).then(templateStr => {
+          this.writeTemplate(home, simulation, templatePath, templateStr);
+          promises.all().then(() => {
+            resolve();
+            logger.info(`Successful generation for ${this.name}`);
+          });
         });
       });
-    }).then(() => {
-      logger.info(`Successful generation for ${this.name}`);
     });
   }
 };
