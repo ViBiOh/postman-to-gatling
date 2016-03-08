@@ -67,8 +67,11 @@ const options = require('yargs')
 const simulation = new Simulation();
 simulation.load(options.environment, options.collection).then(() => {
   simulation.build();
+
+  if (options.output) {
+    simulation.outputName(options.output);
+  }
   simulation.generate(options.home, options.data, options.bodies, options.simulation, options.template).then(() => {
-    logger.info(`Successful generation for ${simulation.name}`);
     messages.display(logger);
   });
 }).catch(err => {

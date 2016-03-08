@@ -55,6 +55,10 @@ module.exports = class Simulation {
     this.resolveEnvironmentVariables();
   }
 
+  outputName(outputName) {
+    this.name = outputName;
+  }
+
   resolveEnvironmentVariables() {
     const self = this;
 
@@ -163,6 +167,8 @@ module.exports = class Simulation {
           this.writeTemplate(home, simulation, templatePath, values[1]).then(resolve);
         });
       });
+    }).then(() => {
+      logger.info(`Successful generation for ${this.name}`);
     });
   }
 };
