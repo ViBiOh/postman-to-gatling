@@ -3,6 +3,8 @@
 const fs = require('fs');
 const readFile = require('js-utils').asyncifyCallback(fs.readFile);
 const writeFile = require('js-utils').asyncifyCallback(fs.writeFile);
+const access = require('js-utils').asyncifyCallback(fs.access);
+const mkdir = require('js-utils').asyncifyCallback(fs.mkdir);
 const stringify = require('js-utils').stringify;
 const logger = require('node-logger').getLogger('postmanToGatling');
 const Request = require('./request.js');
@@ -104,6 +106,12 @@ module.exports = class Simulation {
     return undefined;
   }
 
+  createBodyDirectory(home, bodies) {
+    return new Promise(resolve => {
+      access(home + bodies, fs.W_OK).then(resolve, mkdir(home + bodies).then(resolve));
+    });
+  }
+
   generateEnvironments(home, data) {
     if (this.environments.length > 0) {
       logger.info(`Generating Gatling environment file for ${this.name}`);
@@ -145,11 +153,15 @@ module.exports = class Simulation {
   }
 
   generate(home, data, bodies, simulation, templatePath) {
-    return Promise.all([
-      this.generateEnvironments(home, data),
-      this.generateTemplate(home, bodies),
-    ]).then(values => {
-      this.writeTemplate(home, simulation, templatePath, values[1]);
+    return new Promise(resolve => {
+      this.createBodyDirectory(home, bodies).then(() => {
+        Promise.all([
+          this.generateEnvironments(home, data),
+          this.generateTemplate(home, bodies),
+        ]).then(values => {
+          this.writeTemplate(home, simulation, templatePath, values[1]).then(resolve);
+        });
+      });
     });
   }
 };
