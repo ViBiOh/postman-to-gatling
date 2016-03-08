@@ -55,6 +55,10 @@ const options = require('yargs')
     default: './src/postman2gatling_template.scala',
     normalize: true,
     describe: 'path to scala template file',
+  }).options('output', {
+    alias: 'o',
+    type: 'string',
+    describe: 'collection output name',
   })
   .help('help')
   .strict()
@@ -64,6 +68,7 @@ const simulation = new Simulation();
 simulation.load(options.environment, options.collection).then(() => {
   simulation.build();
   simulation.generate(options.home, options.data, options.bodies, options.simulation, options.template).then(() => {
+    logger.info(`Successful generation for ${simulation.name}`);
     messages.display(logger);
   });
 }).catch(err => {

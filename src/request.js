@@ -1,7 +1,8 @@
 'use strict';
 
 const fs = require('fs');
-const exists = require('js-utils').asyncifyCallback(fs.exists);
+const writeFile = require('js-utils').asyncifyCallback(fs.writeFile);
+const access = require('js-utils').asyncifyCallback(fs.access);
 const messages = require('./messages');
 
 function varString(value) {
@@ -181,22 +182,29 @@ module.exports = class Request {
         }
       }
 
-      if (this.body && false/* TODO */) {
+      if (this.body) {
         const filename = `${outputName}/${this.body.filename}`;
-        const absolutPath = bodiesPath + filename;
+        const requestBodyPath = bodiesPath + filename;
+        let writePromise = undefined;
 
         if (this.body.content) {
-          promises.push(fs.writeFile(absolutPath, this.body.content));
+          writePromise = writeFile(requestBodyPath, this.body.content);
+          promises.push(writePromise);
         }
 
         str += `${indent(offset + 1)}'.body(RawFileBody("${filename}"))\n`;
-        const existsPromise = exists(absolutPath);
-        promises.push(existsPromise);
-        existsPromise.then(present => {
-          if (!present) {
-            messages.add(`For request <${this.name}> : Please provide file ${absolutPath}`);
+        promises.push(new Promise(resolveAccess => {
+          if (writePromise) {
+            writePromise.then(() => {
+              access(requestBodyPath, fs.W_OK).then(resolveAccess, () => {
+                messages.add(`For request <${this.name}> : Please provide file ${requestBodyPath}`);
+                resolveAccess();
+              });
+            });
+          } else {
+            resolveAccess();
           }
-        });
+        }));
       }
 
       if (this.checks.length > 0) {

@@ -52,10 +52,10 @@ module.exports = class Simulation {
       }
     }
 
-    this.flatEnvironmentVariables();
+    this.resolveEnvironmentVariables();
   }
 
-  flatEnvironmentVariables() {
+  resolveEnvironmentVariables() {
     const self = this;
 
     let updated = true;
@@ -108,7 +108,8 @@ module.exports = class Simulation {
 
   createBodyDirectory(home, bodies) {
     return new Promise(resolve => {
-      access(home + bodies, fs.W_OK).then(resolve, mkdir(home + bodies).then(resolve));
+      const bodyDirectoryPath = home + bodies + this.name;
+      access(bodyDirectoryPath, fs.W_OK).then(resolve, mkdir(bodyDirectoryPath).then(resolve));
     });
   }
 
