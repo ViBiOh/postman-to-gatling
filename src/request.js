@@ -5,6 +5,7 @@ const writeFile = require('js-utils').asyncifyCallback(fs.writeFile);
 const messages = require('./messages');
 const promises = require('./promises');
 const placeholderReplacer = require('./commons').variablePlaceholderToShellVariable;
+const stringVariable = require('./commons').stringVariable;
 const checkWriteRight = require('./commons').checkWriteRight;
 const indent = require('./commons').indent;
 
@@ -30,18 +31,17 @@ module.exports = class Request {
   buildHeaders() {
     const self = this;
 
-    function manageHeader(matchAll, headerKey, headerValue) {
+    function manageHeader(all, headerKey, headerValue) {
       if (!self.auth || self.auth && headerKey !== 'Authorization') {
         self.headers[placeholderReplacer(headerKey)] = placeholderReplacer(headerValue);
       }
     }
 
-    const rawHeaders = self.postman.headers.split(/\n/gmi);
-    for (let i = 0, size = rawHeaders.length; i < size; i += 1) {
-      if (rawHeaders[i] !== '') {
-        rawHeaders[i].replace(/(.*?):\s?(.*)/gmi, manageHeader);
+    self.postman.headers.split(/\n/gmi).forEach(header => {
+      if (header !== '') {
+        header.replace(/(.*?):\s?(.*)/gmi, manageHeader);
       }
-    }
+    });
   }
 
   buildBody() {
@@ -58,7 +58,7 @@ module.exports = class Request {
       };
 
       if (self.headers['Content-Disposition']) {
-        self.headers['Content-Disposition'].replace(/filename\*?=(?:.*?'')?["']?(.*)["']?/mi, (matchAll, headerFilename) => {
+        self.headers['Content-Disposition'].replace(/filename\*?=(?:.*?'')?["']?(.*)["']?/mi, (all, headerFilename) => {
           if (headerFilename) {
             self.body.filename = headerFilename;
           }
@@ -73,7 +73,7 @@ module.exports = class Request {
     function stringVar(name, value) {
       let checked = false;
 
-      value.replace(/['"](.*?)['"]/gmi, (matchAll, string) => {
+      stringVariable(value, (all, string) => {
         self.checks.push({
           type: 'string',
           name,
@@ -93,7 +93,7 @@ module.exports = class Request {
       if (path) {
         jsonPath = path;
       } else {
-        value.replace(/(.*?)\.(.*)/mi, (matchAll, sourceVariable, sourcePath) => {
+        value.replace(/(.*?)\.(.*)/mi, (all, sourceVariable, sourcePath) => {
           postman.replace(new RegExp(`${sourceVariable}\\s*=\\s*JSON.parse\\((\\w*)\\)`, 'm'), (subAll, jsonSource) => {
             if (jsonSource === 'responseBody') {
               jsonPath = sourcePath;
@@ -115,25 +115,23 @@ module.exports = class Request {
       return checked;
     }
 
-    self.postman.tests.replace(/postman\.(?:setEnvironmentVariable|setGlobalVariable)\s*\(\s*['"](\w*)['"]\s*,\s*(.*?)\)(?:\s*;?\s*\/\/JSONPath=([^\n]*))?/gm, (matchAll, varName, varValue, jsonPath) => {
+    self.postman.tests.replace(/postman\.(?:setEnvironmentVariable|setGlobalVariable)\s*\(\s*['"](\w*)['"]\s*,\s*(.*?)\)(?:\s*;?\s*\/\/JSONPath=([^\n]*))?/gm, (all, varName, varValue, jsonPath) => {
       if (!stringVar(varName, varValue)) {
         jsonCheck(varName, varValue, self.postman.tests, jsonPath);
       }
     });
 
     let statusCheckCount = 0;
-    self.postman.tests.replace(/tests\s*\[["'].*?["']]\s*=\s*(.*?)[;\n]/gm, (matchAll, testCode) => {
-      testCode.replace(/responseCode\.code\s*={2,3}\s*(\d{2,3})(?:\s*\|\|\s*)?/gm, (subAll, httpCode) => {
-        statusCheckCount += 1;
-        if (statusCheckCount === 1) {
-          self.checks.push({
-            type: 'status',
-            value: httpCode,
-          });
-        } else {
-          messages.push(`For request <${self.name}> : Multiple HTTP status check is not currently supported`);
-        }
-      });
+    self.postman.tests.replace(/tests\s*\[(["'])(?:(?=(\\?))\2.)*?\1]\s*=\s*(?:responseCode\.code\s*={2,3}\s*(\d{2,3})(?:\s*\|\|\s*)?)[;\n]/gm, (all, quote, testName, httpCode) => {
+      statusCheckCount += 1;
+      if (statusCheckCount === 1) {
+        self.checks.push({
+          type: 'status',
+          value: httpCode,
+        });
+      } else {
+        messages.push(`For request <${self.name}> : Multiple HTTP status check is not currently supported`);
+      }
     });
   }
 

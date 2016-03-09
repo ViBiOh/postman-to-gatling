@@ -6,6 +6,8 @@ const mkdir = require('js-utils').asyncifyCallback(fs.mkdir);
 
 module.exports.variablePlaceholderToShellVariable = value => value.replace(/\{\{(.*?)\}\}/gmi, '${$1}');
 
+module.exports.stringVariable = (value, callback) => value.replace(/(["'])(?:(?=(\\?))\2.)*?\1/gmi, callback);
+
 function checkWriteRight(path) {
   return access(path, fs.W_OK);
 }
