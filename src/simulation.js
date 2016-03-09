@@ -144,7 +144,7 @@ module.exports = class Simulation {
     return new Promise(resolve => {
       readFile(templatePath, 'utf8').then(templateData => {
         const cleanTemplate = templateData.replace(/\{\{(outputName)\}\}/gmi, this.name).replace(/\{\{(requests)\}\}/mi, requestsTemplate);
-        promises.add(fs.writeFile(`${simulationpath}${this.name}.scala`, cleanTemplate));
+        promises.add(writeFile(`${simulationpath}${this.name}.scala`, cleanTemplate));
         resolve();
       });
     });
