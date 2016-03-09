@@ -112,35 +112,39 @@ module.exports = class Simulation {
     return undefined;
   }
 
-  createBodyDirectory(home, bodies) {
+  createBodyDirectory(directoryPath) {
     return new Promise(resolve => {
-      const bodyDirectoryPath = home + bodies + this.name;
+      const bodyDirectoryPath = directoryPath + this.name;
       access(bodyDirectoryPath, fs.W_OK).then(resolve, mkdir(bodyDirectoryPath).then(resolve));
     });
   }
 
-  generateEnvironments(home, data) {
+  generateEnvironments(environmentPath) {
     if (this.environments.length > 0) {
-      logger.info(`Generating Gatling environment file for ${this.name}`);
-      promises.add(writeFile(`${home}${data}${this.name}.json`, stringify(this.feeder, ' ')));
+      logger.info(`Generating Gatling environment file for ${this.name} in ${environmentPath}`);
+      promises.add(writeFile(`${environmentPath}${this.name}.json`, stringify(this.feeder, ' ')));
     }
   }
 
-  generateTemplate(home, bodies) {
+  generateTemplate(bodiesPath) {
+    logger.info(`Generating Gatling template for ${this.name}`);
+
     let str = '';
 
     for (let i = 0, size = this.requests.length; i < size; i += 1) {
-      str += this.requests[i].generate(this.name, 2, `${home}${bodies}`);
+      str += this.requests[i].generate(this.name, 2, bodiesPath);
     }
 
     return str;
   }
 
-  writeTemplate(home, simulation, templatePath, requestsTemplate) {
+  writeTemplate(simulationpath, templatePath, requestsTemplate) {
+    logger.info(`Writing Gatling simulation file in ${simulationpath}`);
+
     return new Promise(resolve => {
       readFile(templatePath, 'utf8').then(templateData => {
         const cleanTemplate = templateData.replace(/\{\{(outputName)\}\}/gmi, this.name).replace(/\{\{(requests)\}\}/mi, requestsTemplate);
-        promises.add(fs.writeFile(`${home}${simulation}${this.name}.scala`, cleanTemplate));
+        promises.add(fs.writeFile(`${simulationpath}${this.name}.scala`, cleanTemplate));
         resolve();
       });
     });
@@ -148,9 +152,9 @@ module.exports = class Simulation {
 
   generate(home, data, bodies, simulation, templatePath) {
     return new Promise(resolve => {
-      this.createBodyDirectory(home, bodies).then(() => {
-        this.generateEnvironments(home, data);
-        promises.add(this.writeTemplate(home, simulation, templatePath, this.generateTemplate(home, bodies)));
+      this.createBodyDirectory(home + bodies).then(() => {
+        this.generateEnvironments(home + data);
+        promises.add(this.writeTemplate(home + simulation, templatePath, this.generateTemplate(home + bodies)));
         promises.all().then(() => {
           resolve();
           logger.info(`Successful generation for ${this.name}`);

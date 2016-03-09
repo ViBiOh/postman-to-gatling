@@ -1,8 +1,6 @@
 'use strict';
 
-module.exports.variablePlaceholderToShellVariable = value => {
-  return value.replace(/\{\{(.*?)\}\}/gmi, '${$1}');
-};
+module.exports.variablePlaceholderToShellVariable = value => value.replace(/\{\{(.*?)\}\}/gmi, '${$1}');
 
 module.exports.indent = times => {
   let str = '';
