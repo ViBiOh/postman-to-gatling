@@ -73,7 +73,6 @@ simulation.load(options.environment, options.collection).then(() => {
   }
   simulation.generate(options.home, options.data, options.bodies, options.simulation, options.template).then(() => {
     messages.display(logger);
-  });
-}).catch(err => {
-  logger.fatal(err);
-});
+  }, err => logger.fatal(err));
+}, err => logger.fatal(err))
+.catch(err => logger.fatal(err));

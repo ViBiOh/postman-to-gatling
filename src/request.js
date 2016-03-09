@@ -2,10 +2,10 @@
 
 const fs = require('fs');
 const writeFile = require('js-utils').asyncifyCallback(fs.writeFile);
-const access = require('js-utils').asyncifyCallback(fs.access);
 const messages = require('./messages');
 const promises = require('./promises');
 const placeholderReplacer = require('./commons').variablePlaceholderToShellVariable;
+const checkWriteRight = require('./commons').checkWriteRight;
 const indent = require('./commons').indent;
 
 module.exports = class Request {
@@ -177,16 +177,16 @@ module.exports = class Request {
       }
 
       str += `${indent(offset + 1)}'.body(RawFileBody("${filename}"))\n`;
-      promises.add(new Promise(resolveAccess => {
+      promises.add(new Promise(resolve => {
         if (writePromise) {
           writePromise.then(() => {
-            access(requestBodyPath, fs.W_OK).then(resolveAccess, () => {
+            checkWriteRight(requestBodyPath).then(resolve, () => {
               messages.add(`For request <${this.name}> : Please provide file ${requestBodyPath}`);
-              resolveAccess();
+              resolve();
             });
           });
         } else {
-          resolveAccess();
+          resolve();
         }
       }));
     }
