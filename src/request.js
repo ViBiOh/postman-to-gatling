@@ -150,70 +150,69 @@ module.exports = class Request {
   }
 
   generate(outputName, offset, bodiesPath) {
-    return new Promise(resolve => {
-      let str = '';
+    let str = '';
 
-      str += `${indent(offset)}.exec(http("${this.name}")\n`;
-      str += `${indent(offset + 1)}.${this.method}("${this.url}")\n`;
-      if (this.auth) {
-        if (this.auth.type === 'basic') {
-          str += `${indent(offset + 1)}.basicAuth("${this.auth.user}", "${this.auth.psw}")\n'`;
-        }
+    str += `${indent(offset)}.exec(http("${this.name}")\n`;
+    str += `${indent(offset + 1)}.${this.method}("${this.url}")\n`;
+    if (this.auth) {
+      if (this.auth.type === 'basic') {
+        str += `${indent(offset + 1)}.basicAuth("${this.auth.user}", "${this.auth.psw}")\n'`;
+      }
+    }
+
+    for (const key in this.headers) {
+      if ({}.hasOwnProperty.call(this.headers, key)) {
+        str += `${indent(offset + 1)}.header("${key}", "${this.headers[key]}")\n`;
+      }
+    }
+
+    if (this.body) {
+      const filename = `${outputName}/${this.body.filename}`;
+      const requestBodyPath = bodiesPath + filename;
+      let writePromise = undefined;
+
+      if (this.body.content) {
+        writePromise = writeFile(requestBodyPath, this.body.content);
+        promises.add(writePromise);
       }
 
-      for (const key in this.headers) {
-        if ({}.hasOwnProperty.call(this.headers, key)) {
-          str += `${indent(offset + 1)}.header("${key}", "${this.headers[key]}")\n`;
-        }
-      }
-
-      if (this.body) {
-        const filename = `${outputName}/${this.body.filename}`;
-        const requestBodyPath = bodiesPath + filename;
-        let writePromise = undefined;
-
-        if (this.body.content) {
-          writePromise = writeFile(requestBodyPath, this.body.content);
-          promises.add(writePromise);
-        }
-
-        str += `${indent(offset + 1)}'.body(RawFileBody("${filename}"))\n`;
-        promises.add(new Promise(resolveAccess => {
-          if (writePromise) {
-            writePromise.then(() => {
-              access(requestBodyPath, fs.W_OK).then(resolveAccess, () => {
-                messages.add(`For request <${this.name}> : Please provide file ${requestBodyPath}`);
-                resolveAccess();
-              });
+      str += `${indent(offset + 1)}'.body(RawFileBody("${filename}"))\n`;
+      promises.add(new Promise(resolveAccess => {
+        if (writePromise) {
+          writePromise.then(() => {
+            access(requestBodyPath, fs.W_OK).then(resolveAccess, () => {
+              messages.add(`For request <${this.name}> : Please provide file ${requestBodyPath}`);
+              resolveAccess();
             });
-          } else {
-            resolveAccess();
-          }
-        }));
-      }
+          });
+        } else {
+          resolveAccess();
+        }
+      }));
+    }
 
-      if (this.checks.length > 0) {
-        str += `${indent(offset + 1)}'.check(\n`;
+    if (this.checks.length > 0) {
+      str += `${indent(offset + 1)}'.check(\n`;
 
-        for (let size = this.checks.length, i = 0; i < size; i += 1) {
-          if (i !== 0) {
-            str += ',\n';
-          }
-
-          if (this.checks[i].type === 'string') {
-            str += `${indent(offset + 2)}status.transform(string => "${this.checks[i].value}").saveAs("${this.checks[i].name}")`;
-          } else if (this.checks[i].type === 'json') {
-            str += `${indent(offset + 2)}jsonPath("$.${this.checks[i].value}").saveAs("${this.checks[i].name}")`;
-          } else if (this.checks[i].type === 'status') {
-            str += `${indent(offset + 2)}status.is(${this.checks[i].value})`;
-          }
+      for (let size = this.checks.length, i = 0; i < size; i += 1) {
+        if (i !== 0) {
+          str += ',\n';
         }
 
-        str += `\n${indent(offset + 1)})\n`;
+        if (this.checks[i].type === 'string') {
+          str += `${indent(offset + 2)}status.transform(string => "${this.checks[i].value}").saveAs("${this.checks[i].name}")`;
+        } else if (this.checks[i].type === 'json') {
+          str += `${indent(offset + 2)}jsonPath("$.${this.checks[i].value}").saveAs("${this.checks[i].name}")`;
+        } else if (this.checks[i].type === 'status') {
+          str += `${indent(offset + 2)}status.is(${this.checks[i].value})`;
+        }
       }
 
-      str += `${indent(offset)})\n`;
-      resolve(str);
-    });
+      str += `\n${indent(offset + 1)})\n`;
+    }
+
+    str += `${indent(offset)})\n`;
+
+    return str;
   }
 };

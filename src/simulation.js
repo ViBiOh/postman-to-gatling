@@ -127,29 +127,22 @@ module.exports = class Simulation {
   }
 
   generateTemplate(home, bodies) {
-    return new Promise(resolve => {
-      let str = '';
+    let str = '';
 
-      function code(codeStr) {
-        str += codeStr;
-      }
+    for (let i = 0, size = this.requests.length; i < size; i += 1) {
+      str += this.requests[i].generate(this.name, 2, `${home}${bodies}`);
+    }
 
-      for (let i = 0, size = this.requests.length; i < size; i += 1) {
-        const requestPromise = this.requests[i].generate(this.name, 2, `${home}${bodies}`);
-        promises.add(requestPromise);
-        requestPromise.then(append => {
-          code(append);
-        });
-      }
-
-      resolve(str);
-    });
+    return str;
   }
 
   writeTemplate(home, simulation, templatePath, requestsTemplate) {
-    readFile(templatePath, 'utf8').then(templateData => {
-      const cleanTemplate = templateData.replace(/\{\{(outputName)\}\}/gmi, this.name).replace(/\{\{(requests)\}\}/mi, requestsTemplate);
-      promises.add(fs.writeFile(`${home}${simulation}${this.name}.scala`, cleanTemplate, resolve));
+    return new Promise(resolve => {
+      readFile(templatePath, 'utf8').then(templateData => {
+        const cleanTemplate = templateData.replace(/\{\{(outputName)\}\}/gmi, this.name).replace(/\{\{(requests)\}\}/mi, requestsTemplate);
+        promises.add(fs.writeFile(`${home}${simulation}${this.name}.scala`, cleanTemplate));
+        resolve();
+      });
     });
   }
 
@@ -157,12 +150,10 @@ module.exports = class Simulation {
     return new Promise(resolve => {
       this.createBodyDirectory(home, bodies).then(() => {
         this.generateEnvironments(home, data);
-        this.generateTemplate(home, bodies).then(templateStr => {
-          this.writeTemplate(home, simulation, templatePath, templateStr);
-          promises.all().then(() => {
-            resolve();
-            logger.info(`Successful generation for ${this.name}`);
-          });
+        promises.add(this.writeTemplate(home, simulation, templatePath, this.generateTemplate(home, bodies)));
+        promises.all().then(() => {
+          resolve();
+          logger.info(`Successful generation for ${this.name}`);
         });
       });
     });
