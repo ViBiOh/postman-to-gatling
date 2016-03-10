@@ -58,10 +58,8 @@ module.exports = class Request {
       };
 
       if (self.headers['Content-Disposition']) {
-        self.headers['Content-Disposition'].replace(/filename\*?=(?:.*?'')?["']?(.*)["']?/mi, (all, headerFilename) => {
-          if (headerFilename) {
-            self.body.filename = headerFilename;
-          }
+        self.headers['Content-Disposition'].replace(/filename\*?=(?:.*?'')?(["'`])((?:(?=(\\?))\3.)+?)\1/mi, (all, quote, headerFilename) => {
+          self.body.filename = headerFilename;
         });
       }
     }
@@ -73,7 +71,7 @@ module.exports = class Request {
     function stringVar(name, value) {
       let checked = false;
 
-      stringVariable(value, (all, string) => {
+      stringVariable(value, string => {
         self.checks.push({
           type: 'string',
           name,
@@ -122,7 +120,7 @@ module.exports = class Request {
     });
 
     let statusCheckCount = 0;
-    self.postman.tests.replace(/tests\s*\[(["'])(?:(?=(\\?))\2.)*?\1]\s*=\s*(?:responseCode\.code\s*={2,3}\s*(\d{2,3})(?:\s*\|\|\s*)?)[;\n]/gm, (all, quote, testName, httpCode) => {
+    self.postman.tests.replace(/tests\s*\[(["'`])((?:(?=(\\?))\3.)*?)\1]\s*=\s*(?:responseCode\.code\s*={2,3}\s*(\d{2,3})(?:\s*\|\|\s*)?)[;\n]/gm, (all, quote, testName, escape, httpCode) => {
       statusCheckCount += 1;
       if (statusCheckCount === 1) {
         self.checks.push({
@@ -154,7 +152,7 @@ module.exports = class Request {
     str += `${indent(offset + 1)}.${this.method}("${this.url}")\n`;
     if (this.auth) {
       if (this.auth.type === 'basic') {
-        str += `${indent(offset + 1)}.basicAuth("${this.auth.user}", "${this.auth.psw}")\n'`;
+        str += `${indent(offset + 1)}.basicAuth("${this.auth.user}", "${this.auth.psw}")\n`;
       }
     }
 
@@ -174,7 +172,7 @@ module.exports = class Request {
         promises.add(writePromise);
       }
 
-      str += `${indent(offset + 1)}'.body(RawFileBody("${filename}"))\n`;
+      str += `${indent(offset + 1)}.body(RawFileBody("${filename}"))\n`;
       promises.add(new Promise(resolve => {
         if (writePromise) {
           writePromise.then(() => {
@@ -190,7 +188,7 @@ module.exports = class Request {
     }
 
     if (this.checks.length > 0) {
-      str += `${indent(offset + 1)}'.check(\n`;
+      str += `${indent(offset + 1)}.check(\n`;
 
       for (let size = this.checks.length, i = 0; i < size; i += 1) {
         if (i !== 0) {
