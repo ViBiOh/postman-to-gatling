@@ -4,7 +4,7 @@ const fs = require('fs');
 const access = require('js-utils').asyncifyCallback(fs.access);
 const mkdir = require('js-utils').asyncifyCallback(fs.mkdir);
 
-module.exports.variablePlaceholderToShellVariable = value => value.replace(/\{\{(.*?)\}\}/gmi, '${$1}');
+module.exports.variablePlaceholderToShellVariable = value => value.replace(/{{(.*?)}}/gmi, '${$1}');
 
 module.exports.stringVariable = (value, callback) => value.replace(/(["'`])((?:(?=(\\?))\3.)*?)\1/gmi, (all, quote, str) => {
   callback(str);
