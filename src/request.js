@@ -157,7 +157,7 @@ module.exports = class Request {
     }
 
     for (const key in this.headers) {
-      if ({}.hasOwnProperty.call(this.headers, key)) {
+      if (Object.hasOwnProperty.call(this.headers, key)) {
         str += `${indent(offset + 1)}.header("${key}", "${this.headers[key]}")\n`;
       }
     }
@@ -190,25 +190,24 @@ module.exports = class Request {
     if (this.checks.length > 0) {
       str += `${indent(offset + 1)}.check(\n`;
 
-      for (let size = this.checks.length, i = 0; i < size; i += 1) {
+      this.checks.forEach((check, i) => {
         if (i !== 0) {
           str += ',\n';
         }
 
-        if (this.checks[i].type === 'string') {
-          str += `${indent(offset + 2)}status.transform(string => "${this.checks[i].value}").saveAs("${this.checks[i].name}")`;
-        } else if (this.checks[i].type === 'json') {
-          str += `${indent(offset + 2)}jsonPath("$.${this.checks[i].value}").saveAs("${this.checks[i].name}")`;
-        } else if (this.checks[i].type === 'status') {
-          str += `${indent(offset + 2)}status.is(${this.checks[i].value})`;
+        if (check.type === 'string') {
+          str += `${indent(offset + 2)}status.transform(string => "${check.value}").saveAs("${check.name}")`;
+        } else if (check.type === 'json') {
+          str += `${indent(offset + 2)}jsonPath("$.${check.value}").saveAs("${check.name}")`;
+        } else if (check.type === 'status') {
+          str += `${indent(offset + 2)}status.is(${check.value})`;
         }
-      }
+      });
 
       str += `\n${indent(offset + 1)})\n`;
     }
 
     str += `${indent(offset)})\n`;
-
     return str;
   }
 };

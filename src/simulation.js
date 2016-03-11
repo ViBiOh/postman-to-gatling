@@ -47,11 +47,11 @@ module.exports = class Simulation {
   }
 
   buildFeeder() {
-    for (let i = this.environments.length - 1; i >= 0; i -= 1) {
-      if (this.environments[i].enabled) {
-        this.feeder[this.environments[i].key] = placeholderReplacer(this.environments[i].value);
+    this.environments.forEach(environment => {
+      if (environment.enabled) {
+        this.feeder[environment.key] = placeholderReplacer(environment.value);
       }
-    }
+    });
 
     this.resolveEnvironmentVariables();
   }
@@ -97,9 +97,9 @@ module.exports = class Simulation {
   }
 
   buildCollection(collection) {
-    for (let i = 0, size = collection.order.length; i < size; i += 1) {
-      this.requests.push(new Request(this.getRawRequest(collection.order[i])).build());
-    }
+    collection.order.forEach(requestIndex => {
+      this.requests.push(new Request(this.getRawRequest(requestIndex)).build());
+    });
   }
 
   getRawRequest(id) {
@@ -123,9 +123,9 @@ module.exports = class Simulation {
 
     let str = '';
 
-    for (let i = 0, size = this.requests.length; i < size; i += 1) {
-      str += this.requests[i].generate(this.name, 2, bodiesPath);
-    }
+    this.requests.forEach(request => {
+      str += request.generate(this.name, 2, bodiesPath);
+    });
 
     return str;
   }

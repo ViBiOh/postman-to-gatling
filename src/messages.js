@@ -7,8 +7,8 @@ module.exports = {
     messages.push(message);
   },
   display: (logger) => {
-    for (let i = 0, size = messages.length; i < size; i += 1) {
-      logger.warn(messages[i]);
-    }
+    messages.forEach(message => {
+      logger.warn(message);
+    });
   },
 };
