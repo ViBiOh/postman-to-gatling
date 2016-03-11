@@ -8,6 +8,7 @@ const logger = require('node-logger').getLogger('postmanToGatling');
 const Request = require('./request');
 const promises = require('./promises');
 const placeholderReplacer = require('./commons').variablePlaceholderToShellVariable;
+const replaceShellVariable = require('./commons').replaceShellVariable;
 const createDirIfNecessary = require('./commons').createDirIfNecessary;
 
 module.exports = class Simulation {
@@ -64,9 +65,9 @@ module.exports = class Simulation {
     const self = this;
 
     let updated = true;
-    function varReplace(matchAll, varKey) {
+    function varReplace(name) {
       updated = true;
-      return self.feeder[varKey];
+      return self.feeder[name];
     }
 
     while (updated) {
@@ -74,7 +75,7 @@ module.exports = class Simulation {
 
       for (const key in this.feeder) {
         if (Object.hasOwnProperty.call(this.feeder, key)) {
-          this.feeder[key] = this.feeder[key].replace(/\${(.*?)}/gmi, varReplace);
+          this.feeder[key] = replaceShellVariable(this.feeder[key], varReplace);
         }
       }
     }

@@ -5,10 +5,12 @@ const access = require('js-utils').asyncifyCallback(fs.access);
 const mkdir = require('js-utils').asyncifyCallback(fs.mkdir);
 
 module.exports.variablePlaceholderToShellVariable = value => value.replace(/{{(.*?)}}/gmi, '${$1}');
-
-module.exports.stringVariable = (value, callback) => value.replace(/(["'`])((?:(?=(\\?))\3.)*?)\1/gmi, (all, quote, str) => {
-  callback(str);
+module.exports.replaceShellVariable = (value, callback) => value.replace(/\${(.*?)}/gmi, '${$1}', (all, name) => {
+  callback(name);
 });
+module.exports.stringVariable = (str, callback) => str.replace(/(["'`])((?:(?=(\\?))\3.)*?)\1/gmi, (all, quote, string) => callback(string));
+module.exports.splitHeader = (str, callback) => str.replace(/(.*?):\s?(.*)/gmi, (all, key, value) => callback(key, value));
+module.exports.safeFilename = str => str.replace(/[^a-zA-Z0-9-]/gm, '_');
 
 function checkWriteRight(path) {
   return access(path, fs.W_OK);

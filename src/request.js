@@ -6,6 +6,8 @@ const messages = require('./messages');
 const promises = require('./promises');
 const placeholderReplacer = require('./commons').variablePlaceholderToShellVariable;
 const stringVariable = require('./commons').stringVariable;
+const splitHeader = require('./commons').splitHeader;
+const safeFilename = require('./commons').safeFilename;
 const checkWriteRight = require('./commons').checkWriteRight;
 const indent = require('./commons').indent;
 
@@ -31,15 +33,15 @@ module.exports = class Request {
   buildHeaders() {
     const self = this;
 
-    function manageHeader(all, headerKey, headerValue) {
-      if (!self.auth || self.auth && headerKey !== 'Authorization') {
-        self.headers[placeholderReplacer(headerKey)] = placeholderReplacer(headerValue);
+    function manageHeader(key, value) {
+      if (!self.auth || self.auth && key !== 'Authorization') {
+        self.headers[placeholderReplacer(key)] = placeholderReplacer(value);
       }
     }
 
     self.postman.headers.split(/\n/gmi).forEach(header => {
       if (header !== '') {
-        header.replace(/(.*?):\s?(.*)/gmi, manageHeader);
+        splitHeader(header, manageHeader);
       }
     });
   }
@@ -49,7 +51,7 @@ module.exports = class Request {
 
     if (self.postman.dataMode === 'raw') {
       self.body = {
-        filename: `${self.name.replace(/[^a-zA-Z0-9-]/gm, '_')}_stringbody.txt`,
+        filename: `${safeFilename(self.name)}_stringbody.txt`,
         content: placeholderReplacer(self.postman.rawModeData),
       };
     } else if (self.postman.dataMode === 'binary') {
