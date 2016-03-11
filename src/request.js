@@ -4,12 +4,16 @@ const fs = require('fs');
 const writeFile = require('js-utils').asyncifyCallback(fs.writeFile);
 const messages = require('./messages');
 const promises = require('./promises');
-const placeholderReplacer = require('./commons').variablePlaceholderToShellVariable;
-const stringVariable = require('./commons').stringVariable;
-const splitHeader = require('./commons').splitHeader;
-const safeFilename = require('./commons').safeFilename;
-const checkWriteRight = require('./commons').checkWriteRight;
-const indent = require('./commons').indent;
+
+const commons = require('./commons');
+const placeholderReplacer = commons.variablePlaceholderToShellVariable;
+const stringVariable = commons.stringVariable;
+const splitHeader = commons.splitHeader;
+const safeFilename = commons.safeFilename;
+const checkWriteRight = commons.checkWriteRight;
+const contentDispositionFilename = commons.contentDispositionFilename;
+const testHttpStatus = commons.testHttpStatus;
+const indent = commons.indent;
 
 module.exports = class Request {
   constructor(postman) {
@@ -60,8 +64,8 @@ module.exports = class Request {
       };
 
       if (self.headers['Content-Disposition']) {
-        self.headers['Content-Disposition'].replace(/filename\*?=(?:.*?'')?(["'`])((?:(?=(\\?))\3.)+?)\1/mi, (all, quote, headerFilename) => {
-          self.body.filename = headerFilename;
+        contentDispositionFilename(self.headers['Content-Disposition'], filename => {
+          self.body.filename = filename;
         });
       }
     }
@@ -121,17 +125,11 @@ module.exports = class Request {
       }
     });
 
-    let statusCheckCount = 0;
-    self.postman.tests.replace(/tests\s*\[(["'`])((?:(?=(\\?))\3.)*?)\1]\s*=\s*(?:responseCode\.code\s*={2,3}\s*(\d{2,3})(?:\s*\|\|\s*)?)[;\n]/gm, (all, quote, testName, escape, httpCode) => {
-      statusCheckCount += 1;
-      if (statusCheckCount === 1) {
-        self.checks.push({
-          type: 'status',
-          value: httpCode,
-        });
-      } else {
-        messages.push(`For request <${self.name}> : Multiple HTTP status check is not currently supported`);
-      }
+    testHttpStatus(self.postman.tests, httpCode => {
+      self.checks.push({
+        type: 'status',
+        value: httpCode,
+      });
     });
   }
 
@@ -147,22 +145,36 @@ module.exports = class Request {
     return this;
   }
 
-  generate(outputName, offset, bodiesPath) {
-    let str = '';
+  generateIndexOffset(offset) {
+    return [indent(offset), indent(offset + 1), indent(offset + 2)];
+  }
 
-    str += `${indent(offset)}.exec(http("${this.name}")\n`;
-    str += `${indent(offset + 1)}.${this.method}("${this.url}")\n`;
+  generateAuth(indentOffset) {
     if (this.auth) {
       if (this.auth.type === 'basic') {
-        str += `${indent(offset + 1)}.basicAuth("${this.auth.user}", "${this.auth.psw}")\n`;
+        return `${indentOffset[1]}.basicAuth("${this.auth.user}", "${this.auth.psw}")\n`;
+      }
+      if (this.auth.type === 'digest') {
+        return `${indentOffset[1]}.digest("${this.auth.user}", "${this.auth.psw}")\n`;
       }
     }
+    return '';
+  }
+
+  generateHeaders(indentOffset) {
+    let str = '';
 
     for (const key in this.headers) {
       if (Object.hasOwnProperty.call(this.headers, key)) {
-        str += `${indent(offset + 1)}.header("${key}", "${this.headers[key]}")\n`;
+        str += `${indentOffset[1]}.header("${key}", "${this.headers[key]}")\n`;
       }
     }
+
+    return str;
+  }
+
+  generateBodies(indentOffset, outputName, bodiesPath) {
+    let str = '';
 
     if (this.body) {
       const filename = `${outputName}/${this.body.filename}`;
@@ -174,7 +186,7 @@ module.exports = class Request {
         promises.add(writePromise);
       }
 
-      str += `${indent(offset + 1)}.body(RawFileBody("${filename}"))\n`;
+      str += `${indentOffset[1]}.body(RawFileBody("${filename}"))\n`;
       promises.add(new Promise(resolve => {
         if (writePromise) {
           writePromise.then(() => {
@@ -189,8 +201,14 @@ module.exports = class Request {
       }));
     }
 
+    return str;
+  }
+
+  generateChecks(indentOffset) {
+    let str = '';
+
     if (this.checks.length > 0) {
-      str += `${indent(offset + 1)}.check(\n`;
+      str += `${indentOffset[1]}.check(\n`;
 
       this.checks.forEach((check, i) => {
         if (i !== 0) {
@@ -198,18 +216,34 @@ module.exports = class Request {
         }
 
         if (check.type === 'string') {
-          str += `${indent(offset + 2)}status.transform(string => "${check.value}").saveAs("${check.name}")`;
+          str += `${indentOffset[2]}status.transform(string => "${check.value}").saveAs("${check.name}")`;
         } else if (check.type === 'json') {
-          str += `${indent(offset + 2)}jsonPath("$.${check.value}").saveAs("${check.name}")`;
+          str += `${indentOffset[2]}jsonPath("$.${check.value}").saveAs("${check.name}")`;
         } else if (check.type === 'status') {
-          str += `${indent(offset + 2)}status.is(${check.value})`;
+          str += `${indentOffset[2]}status.is(${check.value})`;
         }
       });
 
-      str += `\n${indent(offset + 1)})\n`;
+      str += `\n${indentOffset[1]})\n`;
     }
 
-    str += `${indent(offset)})\n`;
+    return str;
+  }
+
+  generate(outputName, bodiesPath, offset) {
+    let str = '';
+
+    const indentOffset = this.generateIndexOffset(offset);
+
+    str += `${indentOffset[0]}.exec(http("${this.name}")\n`;
+    str += `${indentOffset[1]}.${this.method}("${this.url}")\n`;
+
+    str += this.generateAuth(indentOffset);
+    str += this.generateHeaders(indentOffset);
+    str += this.generateBodies(indentOffset, outputName, bodiesPath);
+    str += this.generateChecks(indentOffset);
+
+    str += `${indentOffset[0]})\n`;
     return str;
   }
 };

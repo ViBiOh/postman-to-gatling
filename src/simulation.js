@@ -125,7 +125,7 @@ module.exports = class Simulation {
     let str = '';
 
     this.requests.forEach(request => {
-      str += request.generate(this.name, 2, bodiesPath);
+      str += request.generate(this.name, bodiesPath, 2);
     });
 
     return str;
