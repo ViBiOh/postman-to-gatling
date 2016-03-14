@@ -16,7 +16,7 @@ function mustachePlaceholder(str, key, callback) {
   return str.replace(mustacheRegex, callback);
 }
 module.exports.mustachePlaceholder = mustachePlaceholder;
-module.exports.variablePlaceholderToShellVariable = str => mustachePlaceholder(str, '.*?', value => `\$\{${value}\}`);
+module.exports.mustacheToShellVariable = str => mustachePlaceholder(str, '.*?', value => `\$\{${value}\}`);
 module.exports.replaceShellVariable = (str, callback) => str.replace(/\${(.*?)}/gmi, '${$1}', (all, name) => {
   callback(name);
 });

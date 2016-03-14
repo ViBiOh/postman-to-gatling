@@ -7,10 +7,12 @@ const stringify = require('js-utils').stringify;
 const logger = require('node-logger').getLogger('postmanToGatling');
 const Request = require('./request');
 const promises = require('./promises');
-const mustachePlaceholder = require('./commons').mustachePlaceholder;
-const placeholderReplacer = require('./commons').variablePlaceholderToShellVariable;
-const replaceShellVariable = require('./commons').replaceShellVariable;
-const createDirIfNecessary = require('./commons').createDirIfNecessary;
+
+const commons = require('./commons');
+const mustachePlaceholder = commons.mustachePlaceholder;
+const placeholderReplacer = commons.mustacheToShellVariable;
+const replaceShellVariable = commons.replaceShellVariable;
+const createDirIfNecessary = commons.createDirIfNecessary;
 
 module.exports = class Simulation {
   constructor() {

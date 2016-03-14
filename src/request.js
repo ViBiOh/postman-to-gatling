@@ -6,14 +6,14 @@ const messages = require('./messages');
 const promises = require('./promises');
 
 const commons = require('./commons');
-const placeholderReplacer = commons.variablePlaceholderToShellVariable;
-const stringVariable = commons.stringVariable;
+const indent = commons.indent;
 const splitHeader = commons.splitHeader;
 const safeFilename = commons.safeFilename;
-const checkWriteRight = commons.checkWriteRight;
-const contentDispositionFilename = commons.contentDispositionFilename;
 const testHttpStatus = commons.testHttpStatus;
-const indent = commons.indent;
+const stringVariable = commons.stringVariable;
+const checkWriteRight = commons.checkWriteRight;
+const mustachePlaceholder = commons.mustacheToShellVariable;
+const contentDispositionFilename = commons.contentDispositionFilename;
 
 module.exports = class Request {
   constructor(postman) {
@@ -28,8 +28,8 @@ module.exports = class Request {
     if (this.postman.currentHelper === 'basicAuth') {
       this.auth = {
         type: 'basic',
-        user: placeholderReplacer(this.postman.helperAttributes.username),
-        psw: placeholderReplacer(this.postman.helperAttributes.password),
+        user: mustachePlaceholder(this.postman.helperAttributes.username),
+        psw: mustachePlaceholder(this.postman.helperAttributes.password),
       };
     }
   }
@@ -39,7 +39,7 @@ module.exports = class Request {
 
     function manageHeader(key, value) {
       if (!self.auth || self.auth && key !== 'Authorization') {
-        self.headers[placeholderReplacer(key)] = placeholderReplacer(value);
+        self.headers[mustachePlaceholder(key)] = mustachePlaceholder(value);
       }
     }
 
@@ -56,7 +56,7 @@ module.exports = class Request {
     if (self.postman.dataMode === 'raw') {
       self.body = {
         filename: `${safeFilename(self.name)}_stringbody.txt`,
-        content: placeholderReplacer(self.postman.rawModeData),
+        content: mustachePlaceholder(self.postman.rawModeData),
       };
     } else if (self.postman.dataMode === 'binary') {
       self.body = {
@@ -134,8 +134,8 @@ module.exports = class Request {
   }
 
   build() {
-    this.method = placeholderReplacer(this.postman.method.toLowerCase());
-    this.url = placeholderReplacer(this.postman.url);
+    this.method = mustachePlaceholder(this.postman.method.toLowerCase());
+    this.url = mustachePlaceholder(this.postman.url);
 
     this.buildAuth();
     this.buildHeaders();
