@@ -4,8 +4,20 @@ const fs = require('fs');
 const access = require('js-utils').asyncifyCallback(fs.access);
 const mkdir = require('js-utils').asyncifyCallback(fs.mkdir);
 
-module.exports.variablePlaceholderToShellVariable = value => value.replace(/{{(.*?)}}/gmi, '${$1}');
-module.exports.replaceShellVariable = (value, callback) => value.replace(/\${(.*?)}/gmi, '${$1}', (all, name) => {
+function isFunction(potentialFunction) {
+  return potentialFunction && Object.prototype.toString.call(potentialFunction) === '[object Function]';
+}
+
+function mustachePlaceholder(str, key, callback) {
+  const mustacheRegex = new RegExp(`{{${key}}`, 'gmi');
+  if (isFunction(callback)) {
+    return str.replace(mustacheRegex, value => callback(value));
+  }
+  return str.replace(mustacheRegex, callback);
+}
+module.exports.mustachePlaceholder = mustachePlaceholder;
+module.exports.variablePlaceholderToShellVariable = str => mustachePlaceholder(str, '.*?', value => `\$\{${value}\}`);
+module.exports.replaceShellVariable = (str, callback) => str.replace(/\${(.*?)}/gmi, '${$1}', (all, name) => {
   callback(name);
 });
 module.exports.splitHeader = (str, callback) => str.replace(/(.*?):\s?(.*)/gmi, (all, key, value) => callback(key, value));

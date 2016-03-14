@@ -7,6 +7,7 @@ const stringify = require('js-utils').stringify;
 const logger = require('node-logger').getLogger('postmanToGatling');
 const Request = require('./request');
 const promises = require('./promises');
+const mustachePlaceholder = require('./commons').mustachePlaceholder;
 const placeholderReplacer = require('./commons').variablePlaceholderToShellVariable;
 const replaceShellVariable = require('./commons').replaceShellVariable;
 const createDirIfNecessary = require('./commons').createDirIfNecessary;
@@ -136,7 +137,7 @@ module.exports = class Simulation {
 
     return new Promise((resolve, reject) => {
       readFile(templatePath, 'utf8').then(templateData => {
-        promises.add(writeFile(`${simulationpath}${this.name}.scala`, templateData.replace(/{{(outputName)}}/gmi, this.name).replace(/{{(requests)}}/mi, requestsTemplate)));
+        promises.add(writeFile(`${simulationpath}${this.name}.scala`, mustachePlaceholder(mustachePlaceholder(templateData, 'outputName', this.name), 'requests', requestsTemplate)));
         resolve();
       }, reject);
     });
