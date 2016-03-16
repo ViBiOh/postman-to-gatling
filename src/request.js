@@ -10,7 +10,6 @@ const indent = commons.indent;
 const splitHeader = commons.splitHeader;
 const safeFilename = commons.safeFilename;
 const testHttpStatus = commons.testHttpStatus;
-const stringVariable = commons.stringVariable;
 const checkWriteRight = commons.checkWriteRight;
 const mustachePlaceholder = commons.mustacheToShellVariable;
 const contentDispositionFilename = commons.contentDispositionFilename;
@@ -74,57 +73,6 @@ module.exports = class Request {
   buildChecks() {
     const self = this;
 
-    function stringVar(name, value) {
-      let checked = false;
-
-      stringVariable(value, string => {
-        self.checks.push({
-          type: 'string',
-          name,
-          value: string,
-        });
-
-        checked = true;
-      });
-
-      return checked;
-    }
-
-    function jsonCheck(name, value, postman, path) {
-      let checked = false;
-
-      let jsonPath = '';
-      if (path) {
-        jsonPath = path;
-      } else {
-        value.replace(/(.*?)\.(.*)/mi, (all, sourceVariable, sourcePath) => {
-          postman.replace(new RegExp(`${sourceVariable}\\s*=\\s*JSON.parse\\((\\w*)\\)`, 'm'), (subAll, jsonSource) => {
-            if (jsonSource === 'responseBody') {
-              jsonPath = sourcePath;
-            }
-          });
-        });
-      }
-
-      if (jsonPath !== '') {
-        self.checks.push({
-          type: 'json',
-          name,
-          value: jsonPath,
-        });
-
-        checked = true;
-      }
-
-      return checked;
-    }
-
-    self.postman.tests.replace(/postman\.(?:setEnvironmentVariable|setGlobalVariable)\s*\(\s*['"](\w*)['"]\s*,\s*(.*?)\)(?:\s*;?\s*\/\/JSONPath=([^\n]*))?/gm, (all, varName, varValue, jsonPath) => {
-      if (!stringVar(varName, varValue)) {
-        jsonCheck(varName, varValue, self.postman.tests, jsonPath);
-      }
-    });
-
     testHttpStatus(self.postman.tests, httpCode => {
       self.checks.push({
         type: 'status',
@@ -145,7 +93,7 @@ module.exports = class Request {
     return this;
   }
 
-  generateIndexOffset(offset) {
+  static generateIndexOffset(offset) {
     return [indent(offset), indent(offset + 1), indent(offset + 2)];
   }
 
@@ -215,11 +163,7 @@ module.exports = class Request {
           str += ',\n';
         }
 
-        if (check.type === 'string') {
-          str += `${indentOffset[2]}status.transform(string => "${check.value}").saveAs("${check.name}")`;
-        } else if (check.type === 'json') {
-          str += `${indentOffset[2]}jsonPath("$.${check.value}").saveAs("${check.name}")`;
-        } else if (check.type === 'status') {
+        if (check.type === 'status') {
           str += `${indentOffset[2]}status.is(${check.value})`;
         }
       });
@@ -233,7 +177,7 @@ module.exports = class Request {
   generate(outputName, bodiesPath, offset) {
     let str = '';
 
-    const indentOffset = this.generateIndexOffset(offset);
+    const indentOffset = Request.generateIndexOffset(offset);
 
     str += `${indentOffset[0]}.exec(http("${this.name}")\n`;
     str += `${indentOffset[1]}.${this.method}("${this.url}")\n`;

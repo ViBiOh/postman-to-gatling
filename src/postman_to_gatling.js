@@ -64,6 +64,10 @@ const options = require('yargs')
   .strict()
   .argv;
 
+function logError(err) {
+  logger.fatal(err);
+}
+
 const simulation = new Simulation();
 simulation.load(options.environment, options.collection).then(() => {
   simulation.build();
@@ -73,6 +77,6 @@ simulation.load(options.environment, options.collection).then(() => {
   }
   simulation.generate(options.home, options.data, options.bodies, options.simulation, options.template).then(() => {
     messages.display(logger);
-  }, err => logger.fatal(err));
-}, err => logger.fatal(err))
-.catch(err => logger.fatal(err));
+  }, logError);
+}, logError)
+.catch(logError);
