@@ -24,7 +24,7 @@ module.exports.splitHeader = (str, callback) => str.replace(/(.*?):\s?(.*)/gmi, 
 module.exports.safeFilename = str => str.replace(/[^a-zA-Z0-9-]/gm, '_');
 module.exports.stringVariable = (str, callback) => str.replace(/(["'`])((?:(?=(\\?))\3.)*?)\1/gmi, (all, quote, string) => callback(string));
 module.exports.contentDispositionFilename = (str, callback) => str.replace(/filename\*?=(?:.*?'')?(["'`])((?:(?=(\\?))\3.)*?)\1/gmi, (all, quote, string) => callback(string));
-module.exports.testHttpStatus = (str, callback) => str.replace(/tests\s*\[(["'`])((?:(?=(\\?))\3.)*?)\1]\s*=\s*responseCode\.code\s*={2,3}\s*(\d{2,3});?/gm, (all, quote, test, escaped, httpCode) => callback(httpCode));
+module.exports.testHttpStatus = (str, callback) => str.replace(/tests\s*\[(["'`])((?:(?=(\\?))\3.)*?)\1]\s*=\s*(responseCode\.code\s*={2,3}\s*\d{2,3}.*?);/gm, (all, quote, test, escaped, testSyntax) => testSyntax.replace(/responseCode\.code\s*={2,3}\s*(\d{2,3})/gm, (subAll, httpCode) => callback(httpCode)));
 
 function checkWriteRight(path) {
   return access(path, fs.W_OK);
