@@ -74,8 +74,13 @@ module.exports = class Request {
     const self = this;
 
     self.checks.status = [];
-    testHttpStatus(self.postman.tests, httpCode => {
-      self.checks.status.push(httpCode);
+    self.checks.notStatus = [];
+    testHttpStatus(self.postman.tests, (inverse, httpCode) => {
+      if (inverse) {
+        self.checks.notStatus.push(httpCode);
+      } else {
+        self.checks.status.push(httpCode);
+      }
     });
   }
 
@@ -151,14 +156,18 @@ module.exports = class Request {
   }
 
   generateChecksStatus(indentOffset) {
-    let str = '';
+    const statuses = [];
 
     const statusCount = this.checks.status.length;
     if (statusCount > 0) {
-      str += `${indentOffset[2]}status.${statusCount === 1 ? 'is' : 'in'}(${this.checks.status.join(', ')})`;
+      statuses.push(`${indentOffset[2]}status.${statusCount === 1 ? 'is' : 'in'}(${this.checks.status.join(', ')})`);
     }
 
-    return str;
+    this.checks.notStatus.forEach(httpStatus => {
+      statuses.push(`${indentOffset[2]}status.not(${httpStatus})`);
+    });
+
+    return `${statuses.join(',\n')}\n`;
   }
 
   generateChecks(indentOffset) {
@@ -166,10 +175,10 @@ module.exports = class Request {
 
     const statuses = this.generateChecksStatus(indentOffset);
 
-    if (statuses !== '') {
+    if (statuses.trim() !== '') {
       str += `${indentOffset[1]}.check(\n`;
       str += statuses;
-      str += `\n${indentOffset[1]})\n`;
+      str += `${indentOffset[1]})\n`;
     }
 
     return str;
