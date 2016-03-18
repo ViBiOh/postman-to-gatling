@@ -20,7 +20,7 @@ module.exports = class Request {
     this.postman = postman;
 
     this.headers = {};
-    this.checks = [];
+    this.checks = {};
   }
 
   buildAuth() {
@@ -73,11 +73,9 @@ module.exports = class Request {
   buildChecks() {
     const self = this;
 
+    self.checks.status = [];
     testHttpStatus(self.postman.tests, httpCode => {
-      self.checks.push({
-        type: 'status',
-        value: httpCode,
-      });
+      self.checks.status.push(httpCode);
     });
   }
 
@@ -152,22 +150,25 @@ module.exports = class Request {
     return str;
   }
 
+  generateChecksStatus(indentOffset) {
+    let str = '';
+
+    const statusCount = this.checks.status.length;
+    if (statusCount > 0) {
+      str += `${indentOffset[2]}status.${statusCount === 1 ? 'is' : 'in'}(${this.checks.status.join(', ')})`;
+    }
+
+    return str;
+  }
+
   generateChecks(indentOffset) {
     let str = '';
 
-    if (this.checks.length > 0) {
+    const statuses = this.generateChecksStatus(indentOffset);
+
+    if (statuses !== '') {
       str += `${indentOffset[1]}.check(\n`;
-
-      this.checks.forEach((check, i) => {
-        if (i !== 0) {
-          str += ',\n';
-        }
-
-        if (check.type === 'status') {
-          str += `${indentOffset[2]}status.is(${check.value})`;
-        }
-      });
-
+      str += statuses;
       str += `\n${indentOffset[1]})\n`;
     }
 
