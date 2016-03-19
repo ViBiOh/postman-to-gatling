@@ -10,6 +10,7 @@ const indent = commons.indent;
 const splitHeader = commons.splitHeader;
 const safeFilename = commons.safeFilename;
 const testHttpStatus = commons.testHttpStatus;
+const testBodyString = commons.testBodyString;
 const checkWriteRight = commons.checkWriteRight;
 const mustachePlaceholder = commons.mustacheToShellVariable;
 const contentDispositionFilename = commons.contentDispositionFilename;
@@ -70,7 +71,7 @@ module.exports = class Request {
     }
   }
 
-  buildChecks() {
+  buildChecksStatus() {
     const self = this;
 
     self.checks.status = [];
@@ -82,6 +83,20 @@ module.exports = class Request {
         self.checks.status.push(httpCode);
       }
     });
+  }
+
+  buildChecksBodies() {
+    const self = this;
+
+    self.checks.bodiesHas = [];
+    testBodyString(self.postman.tests, bodyString => {
+      self.checks.bodiesHas.push(bodyString.replace(/([$^.()[]\])/gmi, '\\1'));
+    });
+  }
+
+  buildChecks() {
+    this.buildChecksStatus();
+    this.buildChecksBodies();
   }
 
   build() {
@@ -170,14 +185,26 @@ module.exports = class Request {
     return `${statuses.join(',\n')}\n`;
   }
 
+  generateChecksBodies(indentOffset) {
+    const statuses = [];
+
+    this.checks.bodiesHas.forEach(bodyHas => {
+      statuses.push(`${indentOffset[2]}regex("${bodyHas}")`);
+    });
+
+    return `${statuses.join(',\n')}\n`;
+  }
+
   generateChecks(indentOffset) {
     let str = '';
 
     const statuses = this.generateChecksStatus(indentOffset);
+    const bodies = this.generateChecksBodies(indentOffset);
 
-    if (statuses.trim() !== '') {
+    if (statuses.trim() !== '' || bodies.trim() !== '') {
       str += `${indentOffset[1]}.check(\n`;
-      str += statuses;
+      str += statuses.trim() !== '' ? statuses : '';
+      str += bodies.trim() !== '' ? bodies : '';
       str += `${indentOffset[1]})\n`;
     }
 
