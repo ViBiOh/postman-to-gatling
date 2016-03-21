@@ -8,6 +8,7 @@ const promises = require('./promises');
 const commons = require('./commons');
 const indent = commons.indent;
 const splitHeader = commons.splitHeader;
+const escapeRegexString = commons.escapeRegexString;
 const safeFilename = commons.safeFilename;
 const testHttpStatus = commons.testHttpStatus;
 const testBodyString = commons.testBodyString;
@@ -189,7 +190,7 @@ module.exports = class Request {
     const statuses = [];
 
     this.checks.bodiesHas.forEach(bodyHas => {
-      statuses.push(`${indentOffset[2]}regex("${bodyHas}")`);
+      statuses.push(`${indentOffset[2]}regex("${escapeRegexString(bodyHas)}")`);
     });
 
     return `${statuses.join(',\n')}\n`;

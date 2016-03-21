@@ -20,6 +20,7 @@ module.exports.mustacheToShellVariable = str => mustachePlaceholder(str, '.*?', 
 module.exports.replaceShellVariable = (str, callback) => str.replace(/\${(.*?)}/gmi, '${$1}', (all, name) => {
   callback(name);
 });
+module.exports.escapeRegexString = str => str.replace(/([|\-\/\\()[.$^{}+?*\]])/g, '\\$1');
 module.exports.splitHeader = (str, callback) => str.replace(/(.*?):\s?(.*)/gmi, (all, key, value) => callback(key, value));
 module.exports.safeFilename = str => str.replace(/[^a-zA-Z0-9-]/gm, '_');
 module.exports.stringVariable = (str, callback) => str.replace(/(["'`])((?:(?=(\\?))\3.)*?)\1/gmi, (all, quote, string) => callback(string));
