@@ -1,5 +1,3 @@
-'use strict';
-
 const fs = require('fs');
 const readFile = require('js-utils').asyncifyCallback(fs.readFile);
 const writeFile = require('js-utils').asyncifyCallback(fs.writeFile);
@@ -7,8 +5,8 @@ const stringify = require('js-utils').stringify;
 const logger = require('node-logger').getLogger('postmanToGatling');
 const Request = require('./request');
 const promises = require('./promises');
-
 const commons = require('./commons');
+
 const mustachePlaceholder = commons.mustachePlaceholder;
 const placeholderReplacer = commons.mustacheToShellVariable;
 const replaceShellVariable = commons.replaceShellVariable;
@@ -30,7 +28,7 @@ module.exports = class Simulation {
 
   loadEnvironnement(environmentFile) {
     if (environmentFile) {
-      return readFile(environmentFile, 'utf8').then(data => {
+      return readFile(environmentFile, 'utf8').then((data) => {
         this.environments = JSON.parse(data).values;
       });
     }
@@ -39,7 +37,7 @@ module.exports = class Simulation {
   }
 
   loadCollection(collectionFile) {
-    return readFile(collectionFile, 'utf8').then(data => {
+    return readFile(collectionFile, 'utf8').then((data) => {
       this.collections = JSON.parse(data);
       this.name = this.collections.name;
     });
@@ -51,7 +49,7 @@ module.exports = class Simulation {
   }
 
   buildFeeder() {
-    this.environments.forEach(environment => {
+    this.environments.forEach((environment) => {
       if (environment.enabled) {
         this.feeder[environment.key] = placeholderReplacer(environment.value);
       }
@@ -76,11 +74,11 @@ module.exports = class Simulation {
     while (updated) {
       updated = false;
 
-      for (const key in this.feeder) {
-        if (Object.hasOwnProperty.call(this.feeder, key)) {
-          this.feeder[key] = replaceShellVariable(this.feeder[key], varReplace);
-        }
-      }
+      Object.keys(this.feeder)
+        .reduce((previous, current) => {
+          this.feeder[current] = replaceShellVariable(this.feeder[current], varReplace);
+          return this.feeder;
+        }, this.feeder);
     }
   }
 
@@ -101,7 +99,7 @@ module.exports = class Simulation {
   }
 
   buildCollection(collection) {
-    collection.order.forEach(requestIndex => {
+    collection.order.forEach((requestIndex) => {
       this.requests.push(new Request(this.getRawRequest(requestIndex)).build());
     });
   }
@@ -127,7 +125,7 @@ module.exports = class Simulation {
 
     let str = '';
 
-    this.requests.forEach(request => {
+    this.requests.forEach((request) => {
       str += request.generate(this.name, bodiesPath, 2);
     });
 
@@ -138,7 +136,7 @@ module.exports = class Simulation {
     logger.info(`Writing Gatling simulation file in ${simulationpath}`);
 
     return new Promise((resolve, reject) => {
-      readFile(templatePath, 'utf8').then(templateData => {
+      readFile(templatePath, 'utf8').then((templateData) => {
         promises.add(writeFile(`${simulationpath}${this.name}.scala`, mustachePlaceholder(mustachePlaceholder(templateData, 'outputName', this.name), 'requests', requestsTemplate)));
         resolve();
       }, reject);
@@ -149,7 +147,8 @@ module.exports = class Simulation {
     return new Promise((resolve, reject) => {
       createDirIfNecessary(home + bodies + this.name).then(() => {
         this.generateEnvironments(home + data);
-        promises.add(this.writeTemplate(home + simulation, templatePath, this.generateTemplate(home + bodies)));
+        promises.add(this.writeTemplate(home + simulation, templatePath,
+          this.generateTemplate(home + bodies)));
         promises.all().then(() => {
           resolve();
           logger.info(`Successful generation for ${this.name}`);

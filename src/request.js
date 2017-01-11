@@ -1,11 +1,9 @@
-'use strict';
-
 const fs = require('fs');
 const writeFile = require('js-utils').asyncifyCallback(fs.writeFile);
 const messages = require('./messages');
 const promises = require('./promises');
-
 const commons = require('./commons');
+
 const indent = commons.indent;
 const splitHeader = commons.splitHeader;
 const escapeRegexString = commons.escapeRegexString;
@@ -39,12 +37,12 @@ module.exports = class Request {
     const self = this;
 
     function manageHeader(key, value) {
-      if (!self.auth || self.auth && key !== 'Authorization') {
+      if (!self.auth || (self.auth && key !== 'Authorization')) {
         self.headers[mustachePlaceholder(key)] = mustachePlaceholder(value);
       }
     }
 
-    self.postman.headers.split(/\n/gmi).forEach(header => {
+    self.postman.headers.split(/\n/gmi).forEach((header) => {
       if (header !== '') {
         splitHeader(header, manageHeader);
       }
@@ -65,7 +63,7 @@ module.exports = class Request {
       };
 
       if (self.headers['Content-Disposition']) {
-        contentDispositionFilename(self.headers['Content-Disposition'], filename => {
+        contentDispositionFilename(self.headers['Content-Disposition'], (filename) => {
           self.body.filename = filename;
         });
       }
@@ -90,7 +88,7 @@ module.exports = class Request {
     const self = this;
 
     self.checks.bodiesHas = [];
-    testBodyString(self.postman.tests, bodyString => {
+    testBodyString(self.postman.tests, (bodyString) => {
       self.checks.bodiesHas.push(bodyString.replace(/([$^.()[]\])/gmi, '\\1'));
     });
   }
@@ -129,15 +127,12 @@ module.exports = class Request {
   }
 
   generateHeaders(indentOffset) {
-    let str = '';
+    const str = [];
 
-    for (const key in this.headers) {
-      if (Object.hasOwnProperty.call(this.headers, key)) {
-        str += `${indentOffset[1]}.header("${key}", "${this.headers[key]}")\n`;
-      }
-    }
+    Object.keys(this.headers)
+      .map(key => `${indentOffset[1]}.header("${key}", "${this.headers[key]}")`);
 
-    return str;
+    return str.join('\n');
   }
 
   generateBodies(indentOffset, outputName, bodiesPath) {
@@ -146,7 +141,7 @@ module.exports = class Request {
     if (this.body) {
       const filename = `${outputName}/${this.body.filename}`;
       const requestBodyPath = bodiesPath + filename;
-      let writePromise = undefined;
+      let writePromise;
 
       if (this.body.content) {
         writePromise = writeFile(requestBodyPath, this.body.content);
@@ -154,7 +149,7 @@ module.exports = class Request {
       }
 
       str += `${indentOffset[1]}.body(RawFileBody("${filename}"))\n`;
-      promises.add(new Promise(resolve => {
+      promises.add(new Promise((resolve) => {
         if (writePromise) {
           writePromise.then(() => {
             checkWriteRight(requestBodyPath).then(resolve, () => {
@@ -179,9 +174,7 @@ module.exports = class Request {
       statuses.push(`${indentOffset[2]}status.${statusCount === 1 ? 'is' : 'in'}(${this.checks.status.join(', ')})`);
     }
 
-    this.checks.notStatus.forEach(httpStatus => {
-      statuses.push(`${indentOffset[2]}status.not(${httpStatus})`);
-    });
+    this.checks.notStatus.forEach(httpStatus => statuses.push(`${indentOffset[2]}status.not(${httpStatus})`));
 
     return `${statuses.join(',\n')}\n`;
   }
@@ -189,7 +182,7 @@ module.exports = class Request {
   generateChecksBodies(indentOffset) {
     const statuses = [];
 
-    this.checks.bodiesHas.forEach(bodyHas => {
+    this.checks.bodiesHas.forEach((bodyHas) => {
       statuses.push(`${indentOffset[2]}regex("${escapeRegexString(bodyHas)}")`);
     });
 

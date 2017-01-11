@@ -1,5 +1,3 @@
-'use strict';
-
 const fs = require('fs');
 const access = require('js-utils').asyncifyCallback(fs.access);
 const mkdir = require('js-utils').asyncifyCallback(fs.mkdir);
@@ -16,11 +14,10 @@ function mustachePlaceholder(str, key, callback) {
   return str.replace(mustacheRegex, callback);
 }
 module.exports.mustachePlaceholder = mustachePlaceholder;
-module.exports.mustacheToShellVariable = str => mustachePlaceholder(str, '.*?', value => `\$\{${value}\}`);
-module.exports.replaceShellVariable = (str, callback) => str.replace(/\${(.*?)}/gmi, '${$1}', (all, name) => {
-  callback(name);
-});
-module.exports.escapeRegexString = str => str.replace(/([|\-\/\\()[.$^{}+?*\]])/g, '\\$1');
+module.exports.mustacheToShellVariable = str => mustachePlaceholder(str, '.*?', value => `$\{${value}}`);
+// eslint-disable-next-line no-template-curly-in-string
+module.exports.replaceShellVariable = (str, callback) => str.replace(/\${(.*?)}/gmi, '${$1}', (all, name) => callback(name));
+module.exports.escapeRegexString = str => str.replace(/([|\-/\\()[.$^{}+?*\]])/g, '\\$1');
 module.exports.splitHeader = (str, callback) => str.replace(/(.*?):\s?(.*)/gmi, (all, key, value) => callback(key, value));
 module.exports.safeFilename = str => str.replace(/[^a-zA-Z0-9-]/gm, '_');
 module.exports.stringVariable = (str, callback) => str.replace(/(["'`])((?:(?=(\\?))\3.)*?)\1/gmi, (all, quote, string) => callback(string));
@@ -34,9 +31,10 @@ function checkWriteRight(path) {
 
 module.exports.checkWriteRight = checkWriteRight;
 
-module.exports.createDirIfNecessary = path => new Promise((resolve, reject) => checkWriteRight(path).then(resolve, () => mkdir(path).then(resolve, reject)));
+module.exports.createDirIfNecessary = path => new Promise((resolve, reject) => checkWriteRight(path)
+  .then(resolve, () => mkdir(path).then(resolve, reject)));
 
-module.exports.indent = times => {
+module.exports.indent = (times) => {
   let str = '';
 
   for (let i = times - 1; i >= 0; i -= 1) {

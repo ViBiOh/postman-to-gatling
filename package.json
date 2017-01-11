@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "eslint": "./node_modules/.bin/eslint src/",
-    "pretest": "npm run eslint",
-    "build": "npm run test"
+    "build": "npm run eslint"
   },
   "repository": {
     "type": "git",
@@ -32,6 +31,7 @@
     "babel-eslint": "latest",
     "babel-preset-es2015": "latest",
     "eslint": "latest",
-    "eslint-config-airbnb": "latest"
+    "eslint-config-airbnb": "latest",
+    "eslint-plugin-import": "latest"
   }
 }
