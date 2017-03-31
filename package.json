@@ -16,7 +16,7 @@
     "utils"
   ],
   "author": "Vincent Boutour <vincent.boutour@gmail.com>",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/ViBiOh/postman-2-gatling/issues"
   },
