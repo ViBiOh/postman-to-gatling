@@ -4,8 +4,10 @@
   "description": "Postman To Gatling",
   "main": "index.js",
   "scripts": {
-    "eslint": "./node_modules/.bin/eslint src/",
-    "build": "npm run eslint"
+    "prettier": "./node_modules/.bin/prettier --print-width 100 --single-quote --trailing-comma all --color --write \"./src/**/*.js\"",
+    "eslint": "./node_modules/.bin/eslint --fix \"./src/**/*.js\"",
+    "codestyle": "npm run prettier && npm run eslint",
+    "build": "npm run codestyle"
   },
   "repository": {
     "type": "git",
@@ -32,6 +34,7 @@
     "babel-preset-es2015": "latest",
     "eslint": "latest",
     "eslint-config-airbnb": "latest",
-    "eslint-plugin-import": "latest"
+    "eslint-plugin-import": "latest",
+    "prettier": "latest"
   }
 }

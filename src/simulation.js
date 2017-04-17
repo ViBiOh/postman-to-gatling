@@ -74,23 +74,24 @@ module.exports = class Simulation {
     while (updated) {
       updated = false;
 
-      Object.keys(this.feeder)
-        .reduce((previous, current) => {
-          this.feeder[current] = replaceShellVariable(this.feeder[current], varReplace);
-          return this.feeder;
-        }, this.feeder);
+      Object.keys(this.feeder).reduce((previous, current) => {
+        this.feeder[current] = replaceShellVariable(this.feeder[current], varReplace);
+        return this.feeder;
+      }, this.feeder);
     }
   }
 
   buildRequests() {
-    const folders = this.collections.folders ? this.collections.folders.sort((a, b) => {
-      if (a.name < b.name) {
-        return -1;
-      } else if (a.name === b.name) {
-        return 0;
-      }
-      return 1;
-    }) : [];
+    const folders = this.collections.folders
+      ? this.collections.folders.sort((a, b) => {
+        if (a.name < b.name) {
+          return -1;
+        } else if (a.name === b.name) {
+          return 0;
+        }
+        return 1;
+      })
+      : [];
 
     for (let i = 0, size = folders.length; i < size; i += 1) {
       this.buildCollection(folders[i]);
@@ -137,7 +138,16 @@ module.exports = class Simulation {
 
     return new Promise((resolve, reject) => {
       readFile(templatePath, 'utf8').then((templateData) => {
-        promises.add(writeFile(`${simulationpath}${this.name}.scala`, mustachePlaceholder(mustachePlaceholder(templateData, 'outputName', this.name), 'requests', requestsTemplate)));
+        promises.add(
+          writeFile(
+            `${simulationpath}${this.name}.scala`,
+            mustachePlaceholder(
+              mustachePlaceholder(templateData, 'outputName', this.name),
+              'requests',
+              requestsTemplate,
+            ),
+          ),
+        );
         resolve();
       }, reject);
     });
@@ -147,8 +157,9 @@ module.exports = class Simulation {
     return new Promise((resolve, reject) => {
       createDirIfNecessary(home + bodies + this.name).then(() => {
         this.generateEnvironments(home + data);
-        promises.add(this.writeTemplate(home + simulation, templatePath,
-          this.generateTemplate(home + bodies)));
+        promises.add(
+          this.writeTemplate(home + simulation, templatePath, this.generateTemplate(home + bodies)),
+        );
         promises.all().then(() => {
           resolve();
           logger.info(`Successful generation for ${this.name}`);

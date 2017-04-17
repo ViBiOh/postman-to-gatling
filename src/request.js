@@ -129,8 +129,9 @@ module.exports = class Request {
   generateHeaders(indentOffset) {
     const str = [];
 
-    Object.keys(this.headers)
-      .map(key => `${indentOffset[1]}.header("${key}", "${this.headers[key]}")`);
+    Object.keys(this.headers).map(
+      key => `${indentOffset[1]}.header("${key}", "${this.headers[key]}")`,
+    );
 
     return str.join('\n');
   }
@@ -149,18 +150,20 @@ module.exports = class Request {
       }
 
       str += `${indentOffset[1]}.body(RawFileBody("${filename}"))\n`;
-      promises.add(new Promise((resolve) => {
-        if (writePromise) {
-          writePromise.then(() => {
-            checkWriteRight(requestBodyPath).then(resolve, () => {
-              messages.add(`For request <${this.name}> : Please provide file ${requestBodyPath}`);
-              resolve();
+      promises.add(
+        new Promise((resolve) => {
+          if (writePromise) {
+            writePromise.then(() => {
+              checkWriteRight(requestBodyPath).then(resolve, () => {
+                messages.add(`For request <${this.name}> : Please provide file ${requestBodyPath}`);
+                resolve();
+              });
             });
-          });
-        } else {
-          resolve();
-        }
-      }));
+          } else {
+            resolve();
+          }
+        }),
+      );
     }
 
     return str;
@@ -171,10 +174,14 @@ module.exports = class Request {
 
     const statusCount = this.checks.status.length;
     if (statusCount > 0) {
-      statuses.push(`${indentOffset[2]}status.${statusCount === 1 ? 'is' : 'in'}(${this.checks.status.join(', ')})`);
+      statuses.push(
+        `${indentOffset[2]}status.${statusCount === 1 ? 'is' : 'in'}(${this.checks.status.join(', ')})`,
+      );
     }
 
-    this.checks.notStatus.forEach(httpStatus => statuses.push(`${indentOffset[2]}status.not(${httpStatus})`));
+    this.checks.notStatus.forEach(httpStatus =>
+      statuses.push(`${indentOffset[2]}status.not(${httpStatus})`),
+    );
 
     return `${statuses.join(',\n')}\n`;
   }

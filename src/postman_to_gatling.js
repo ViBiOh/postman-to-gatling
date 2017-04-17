@@ -12,12 +12,12 @@ const options = require('yargs')
     alias: 'c',
     required: true,
     type: 'string',
-    describe: 'export of Postman\'s collection in JSON format',
+    describe: "export of Postman's collection in JSON format",
   })
   .options('environment', {
     alias: 'e',
     type: 'string',
-    describe: 'export of Postman\'s environment in JSON format',
+    describe: "export of Postman's environment in JSON format",
   })
   .options('output', {
     alias: 'o',
@@ -43,7 +43,7 @@ const options = require('yargs')
     type: 'string',
     default: '/user-files/data/',
     normalize: true,
-    describe: 'path where session\'s data will be written',
+    describe: "path where session's data will be written",
   })
   .options('simulation', {
     alias: 's',
@@ -65,23 +65,25 @@ const options = require('yargs')
     describe: 'collection output name',
   })
   .help('help')
-  .strict()
-  .argv;
+  .strict().argv;
 
 function logError(err) {
   logger.fatal(err);
 }
 
 const simulation = new Simulation();
-simulation.load(options.environment, options.collection).then(() => {
-  simulation.build();
+simulation
+  .load(options.environment, options.collection)
+  .then(() => {
+    simulation.build();
 
-  if (options.output) {
-    simulation.outputName(options.output);
-  }
-  simulation.generate(options.home, options.data, options.bodies, options.simulation,
-    options.template).then(() => {
-      messages.display(logger);
-    }, logError);
-}, logError)
-.catch(logError);
+    if (options.output) {
+      simulation.outputName(options.output);
+    }
+    simulation
+      .generate(options.home, options.data, options.bodies, options.simulation, options.template)
+      .then(() => {
+        messages.display(logger);
+      }, logError);
+  }, logError)
+  .catch(logError);
