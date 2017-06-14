@@ -26,8 +26,8 @@
   "dependencies": {
     "bunyan": "latest",
     "yargs": "latest",
-    "js-utils": "https://github.com/ViBiOh/js-utils.git",
-    "node-logger": "https://github.com/ViBiOh/node-logger.git"
+    "js-utils": "ViBiOh/js-utils",
+    "node-logger": "ViBiOh/node-logger"
   },
   "devDependencies": {
     "babel-eslint": "latest",
